@@ -188,7 +188,7 @@ export const AIChat: React.FC = () => {
   const [completedTypingMessages, setCompletedTypingMessages] = useState<Set<string>>(new Set())
   const [messageQueue, setMessageQueue] = useState<Array<{content: string, component?: React.ReactNode, delay: number, callback?: () => void}>>([])
   const [isProcessingQueue, setIsProcessingQueue] = useState(false)
-  const [currentMessageCallback, setCurrentMessageCallback] = useState<(() => void) | null>(null)
+  const [queueCallback, setQueueCallback] = useState<(() => void) | null>(null)
 
   const {
     bookingData,
@@ -234,6 +234,11 @@ export const AIChat: React.FC = () => {
   // Add a bot message to the queue
   const addBotMessage = (content: string, component?: React.ReactNode, delay: number = 1500, callback?: () => void) => {
     setMessageQueue(prev => [...prev, { content, component, delay, callback }])
+    
+    // If this message has a callback, it should be the final callback for this sequence
+    if (callback) {
+      setQueueCallback(callback)
+    }
   }
 
   // Process the message queue one at a time
@@ -243,7 +248,6 @@ export const AIChat: React.FC = () => {
     setIsProcessingQueue(true)
     const nextMessage = messageQueue[0]
     setMessageQueue(prev => prev.slice(1))
-    setCurrentMessageCallback(nextMessage.callback || null)
     
     setIsTyping(true)
     
@@ -276,16 +280,16 @@ export const AIChat: React.FC = () => {
     setCompletedTypingMessages(prev => new Set([...prev, messageId]))
     setIsProcessingQueue(false)
     
-    // Execute callback if present (for opening popups after typing)
-    if (currentMessageCallback) {
-      setTimeout(currentMessageCallback, 500) // Small delay before opening popup
-      setCurrentMessageCallback(null)
-    }
-    
     // Process next message in queue after a short delay
     setTimeout(() => {
       if (messageQueue.length > 0) {
         processNextMessage()
+      } else {
+        // Queue is empty, execute any pending callback
+        if (queueCallback) {
+          setTimeout(queueCallback, 500) // Small delay before opening popup
+          setQueueCallback(null)
+        }
       }
     }, 300)
   }
@@ -581,27 +585,31 @@ export const AIChat: React.FC = () => {
         {/* Action Button */}
         <button
           onClick={() => {
-            // Reset for new booking
+            // Reset booking but keep patient info
             resetBooking()
-            setIsInitialized(false)
-            setPatientInfoStep('name')
-            setCollectedPatientInfo({ firstName: '', lastName: '', email: '', mobile: '' })
             setShowChatInput(false)
-            // Restart the chat flow
-            setTimeout(() => {
-              addBotMessage("Hello! Welcome to KIMS Hospital. I'm here to help you book your appointment quickly and easily.", undefined, 1000)
-              setTimeout(() => {
-                addBotMessage("First, let me get your basic information to serve you better. Please provide your name:", undefined, 1800)
-                
-                setTimeout(() => {
-                  setPatientInfoStep('name')
-                  setShowChatInput(true)
-                  setTimeout(() => {
-                    chatInputRef.current?.focus()
-                  }, 100)
-                }, 3200)
-              }, 2000)
-            }, 500)
+            setPatientInfoStep('complete') // Mark patient info as complete
+            
+            // Skip patient info and go directly to booking/chat selection
+            const firstName = bookingData.patient?.firstName || collectedPatientInfo.firstName
+            addBotMessage("🎉 **Welcome back**, *" + firstName + "*! Ready to book another appointment? 🏥", undefined, 1000)
+            addBotMessage("**How would you like to proceed?** 🚀", 
+              <div className="space-y-3">
+                <button
+                  onClick={handleStartBooking}
+                  className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
+                >
+                  <Calendar className="w-5 h-5" strokeWidth={1.25} />
+                  Book An Appointment
+                </button>
+                <button
+                  onClick={handleChatMode}
+                  className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
+                >
+                  <MessageCircle className="w-5 h-5" strokeWidth={1.25} />
+                  Chat with Bot
+                </button>
+              </div>, 1500)
           }}
           className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
         >
