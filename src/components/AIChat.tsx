@@ -186,6 +186,9 @@ export const AIChat: React.FC = () => {
   const [typingMessageId, setTypingMessageId] = useState<string | null>(null)
   const [showSlashCommands, setShowSlashCommands] = useState(false)
   const [completedTypingMessages, setCompletedTypingMessages] = useState<Set<string>>(new Set())
+  const [messageQueue, setMessageQueue] = useState<Array<{content: string, component?: React.ReactNode, delay: number, callback?: () => void}>>([])
+  const [isProcessingQueue, setIsProcessingQueue] = useState(false)
+  const [currentMessageCallback, setCurrentMessageCallback] = useState<(() => void) | null>(null)
 
   const {
     bookingData,
@@ -228,24 +231,63 @@ export const AIChat: React.FC = () => {
     oscillator.stop(audioContext.currentTime + 0.2)
   }
 
-  // Add a bot message with typing animation
-  const addBotMessage = (content: string, component?: React.ReactNode, delay: number = 1500) => {
+  // Add a bot message to the queue
+  const addBotMessage = (content: string, component?: React.ReactNode, delay: number = 1500, callback?: () => void) => {
+    setMessageQueue(prev => [...prev, { content, component, delay, callback }])
+  }
+
+  // Process the message queue one at a time
+  const processNextMessage = () => {
+    if (messageQueue.length === 0 || isProcessingQueue) return
+    
+    setIsProcessingQueue(true)
+    const nextMessage = messageQueue[0]
+    setMessageQueue(prev => prev.slice(1))
+    setCurrentMessageCallback(nextMessage.callback || null)
+    
     setIsTyping(true)
     
     setTimeout(() => {
       const newMessage: Message = {
         id: Date.now().toString(),
-        type: component ? 'screen' : 'bot',
-        content,
+        type: nextMessage.component ? 'screen' : 'bot',
+        content: nextMessage.content,
         timestamp: new Date(),
-        component
+        component: nextMessage.component
       }
       
       setMessages(prev => [...prev, newMessage])
       setIsTyping(false)
       setTypingMessageId(newMessage.id)
       playNotificationSound()
-    }, delay)
+    }, nextMessage.delay)
+  }
+
+  // Process queue when new messages are added or when current message finishes
+  useEffect(() => {
+    if (!isProcessingQueue && messageQueue.length > 0) {
+      processNextMessage()
+    }
+  }, [messageQueue, isProcessingQueue])
+
+  // Mark processing as complete when typing finishes
+  const handleTypingComplete = (messageId: string) => {
+    setTypingMessageId(null)
+    setCompletedTypingMessages(prev => new Set([...prev, messageId]))
+    setIsProcessingQueue(false)
+    
+    // Execute callback if present (for opening popups after typing)
+    if (currentMessageCallback) {
+      setTimeout(currentMessageCallback, 500) // Small delay before opening popup
+      setCurrentMessageCallback(null)
+    }
+    
+    // Process next message in queue after a short delay
+    setTimeout(() => {
+      if (messageQueue.length > 0) {
+        processNextMessage()
+      }
+    }, 300)
   }
 
   // Add a user message immediately (no typing animation)
@@ -823,10 +865,9 @@ export const AIChat: React.FC = () => {
     // Add user message for button selection
     addUserMessage("Book An Appointment")
     
-    addBotMessage("🏥 **Great!** First, please select the **medical department** you need: 👨‍⚕️", undefined, 1200)
-    setTimeout(() => {
+    addBotMessage("🏥 **Great!** First, please select the **medical department** you need: 👨‍⚕️", undefined, 1200, () => {
       setShowDepartmentModal(true)
-    }, 2500)
+    })
   }
 
   const handleChatMode = () => {
@@ -1014,10 +1055,9 @@ Now, **how would you like to proceed?** 🚀`,
                 // Add user message for button selection
                 addUserMessage("Let me see other options")
                 
-                addBotMessage("No problem! Let me show you all available options:", undefined, 800)
-                setTimeout(() => {
+                addBotMessage("No problem! Let me show you all available options:", undefined, 800, () => {
                   setShowDepartmentModal(true)
-                }, 1500)
+                })
               }}
               className="w-full bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
             >
@@ -1030,12 +1070,9 @@ Now, **how would you like to proceed?** 🚀`,
     } else {
       // Generic response for other queries
       addBotMessage("I understand you're looking for medical assistance.", undefined, 1100)
-      setTimeout(() => {
-        addBotMessage("Let me help you book an appointment with the right specialist:", undefined, 1000)
-        setTimeout(() => {
-          setShowDepartmentModal(true)
-        }, 1800)
-      }, 2200)
+      addBotMessage("Let me help you book an appointment with the right specialist:", undefined, 1000, () => {
+        setShowDepartmentModal(true)
+      })
     }
   }
 
@@ -1048,12 +1085,9 @@ Now, **how would you like to proceed?** 🚀`,
     addUserMessage(`I selected ${department.name}`)
     
     addBotMessage(`✨ **Excellent choice!** *${department.name}* is one of our **specialized departments** with experienced doctors. 👨‍⚕️`, undefined, 1400)
-    setTimeout(() => {
-      addBotMessage("📍 Now, let's find the **most convenient location** for you: 🏥", undefined, 1000)
-      setTimeout(() => {
-        setShowLocationModal(true)
-      }, 1800)
-    }, 2600)
+    addBotMessage("📍 Now, let's find the **most convenient location** for you: 🏥", undefined, 1000, () => {
+      setShowLocationModal(true)
+    })
   }
 
   const handleLocationSelected = (location: {id: number, name: string}) => {
@@ -1064,12 +1098,9 @@ Now, **how would you like to proceed?** 🚀`,
     addUserMessage(`I chose ${location.name}`)
     
     addBotMessage(`Perfect! ${location.name} is a great choice.`, undefined, 1100)
-    setTimeout(() => {
-      addBotMessage("Now, please select your preferred date and time for the appointment:", undefined, 1200)
-      setTimeout(() => {
-        setShowDateModal(true)
-      }, 2000)
-    }, 2400)
+    addBotMessage("Now, please select your preferred date and time for the appointment:", undefined, 1200, () => {
+      setShowDateModal(true)
+    })
   }
 
   const handleDateTimeSelected = (doctor: {id: number, name: string}, timeSlot: string, date: Date | null) => {
@@ -1186,10 +1217,7 @@ Now, **how would you like to proceed?** 🚀`,
                       {typingMessageId === message.id ? (
                         <TypewriterText 
                           content={message.content} 
-                          onComplete={() => {
-                            setTypingMessageId(null)
-                            setCompletedTypingMessages(prev => new Set([...prev, message.id]))
-                          }}
+                          onComplete={() => handleTypingComplete(message.id)}
                         />
                       ) : (
                         <FormattedText content={message.content} />
