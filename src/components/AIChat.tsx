@@ -156,31 +156,35 @@ export const AIChat: React.FC = () => {
 
   const handleStartBooking = () => {
     setChatMode('booking')
-    addBotMessage("Great! First, please select the medical department you need:")
-    setShowDepartmentModal(true)
+    addBotMessage("Great! First, please select the medical department you need:", undefined, 1200)
+    setTimeout(() => {
+      setShowDepartmentModal(true)
+    }, 2500)
   }
 
   const handleChatMode = () => {
     setChatMode('chat')
-    addBotMessage("I'm here to help! Please tell me what you need assistance with. For example, you can say 'I need to see a dentist at the earliest' or 'I want to book a cardiology appointment'.")
-    // Add input field component
-    addBotMessage("", 
-      <div className="p-4">
-        <textarea
-          value={userInput}
-          onChange={(e) => setUserInput(e.target.value)}
-          placeholder="Type your message here..."
-          className="w-full p-3 border border-gray-300 rounded-lg resize-none"
-          rows={3}
-        />
-        <button
-          onClick={handleUserMessage}
-          className="w-full mt-3 bg-primary hover:bg-primary/90 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200"
-        >
-          Send Message
-        </button>
-      </div>
-    )
+    addBotMessage("I'm here to help! Please tell me what you need assistance with. For example, you can say 'I need to see a dentist at the earliest' or 'I want to book a cardiology appointment'.", undefined, 1800)
+    // Add input field component with delay
+    setTimeout(() => {
+      addBotMessage("", 
+        <div className="p-4">
+          <textarea
+            value={userInput}
+            onChange={(e) => setUserInput(e.target.value)}
+            placeholder="Type your message here..."
+            className="w-full p-3 border border-gray-300 rounded-lg resize-none"
+            rows={3}
+          />
+          <button
+            onClick={handleUserMessage}
+            className="w-full mt-3 bg-primary hover:bg-primary/90 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200"
+          >
+            Send Message
+          </button>
+        </div>, 800
+      )
+    }, 2200)
   }
 
   const handleUserMessage = () => {
@@ -205,15 +209,15 @@ export const AIChat: React.FC = () => {
     
     // Check for dentist request
     if (lowerMessage.includes('dentist') || lowerMessage.includes('dental')) {
-      addBotMessage("I found the earliest available dentist appointment for you!")
+      addBotMessage("Let me check our dentist availability for you...", undefined, 1000)
       
       // Auto-select dentistry department
       const dentistryDept = { id: 1, name: 'Dentistry', description: 'Dental care and oral health' }
       setDepartment(dentistryDept)
       
-      // Show earliest available appointment
+      // Show earliest available appointment with natural delay
       setTimeout(() => {
-        addBotMessage(`Great! I've found Dr. Sarah Johnson, our experienced dentist, available tomorrow at 10:00 AM. Would you like to book this appointment?`,
+        addBotMessage("Perfect! I found Dr. Sarah Johnson, our experienced dentist, available tomorrow at 10:00 AM. Would you like to book this appointment?",
           <div className="p-4 space-y-3">
             <div className="bg-gray-50 p-3 rounded-lg">
               <p><strong>Doctor:</strong> Dr. Sarah Johnson</p>
@@ -230,11 +234,13 @@ export const AIChat: React.FC = () => {
                 setDate(new Date(Date.now() + 24 * 60 * 60 * 1000)) // Tomorrow
                 setLocation({ id: 1, name: 'KIMS Main Campus' })
                 
-                // Show patient form
+                // Show patient form with natural delay
                 setTimeout(() => {
-                  addBotMessage("Perfect! Now I just need your contact information to complete the booking:")
-                  setShowPatientModal(true)
-                }, 500)
+                  addBotMessage("Perfect! Now I just need your contact information to complete the booking:", undefined, 1000)
+                  setTimeout(() => {
+                    setShowPatientModal(true)
+                  }, 1800)
+                }, 800)
               }}
               className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200"
             >
@@ -242,22 +248,27 @@ export const AIChat: React.FC = () => {
             </button>
             <button
               onClick={() => {
-                addBotMessage("No problem! Let me show you all available options:")
-                setShowDepartmentModal(true)
+                addBotMessage("No problem! Let me show you all available options:", undefined, 800)
+                setTimeout(() => {
+                  setShowDepartmentModal(true)
+                }, 1500)
               }}
               className="w-full bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200"
             >
               🔍 See Other Options
             </button>
-          </div>
+          </div>, 1400
         )
-      }, 1000)
+      }, 2400)
     } else {
       // Generic response for other queries
-      addBotMessage("I understand you're looking for medical assistance. Let me help you book an appointment with the right specialist:")
+      addBotMessage("I understand you're looking for medical assistance.", undefined, 1100)
       setTimeout(() => {
-        setShowDepartmentModal(true)
-      }, 1000)
+        addBotMessage("Let me help you book an appointment with the right specialist:", undefined, 1000)
+        setTimeout(() => {
+          setShowDepartmentModal(true)
+        }, 1800)
+      }, 2200)
     }
   }
 
@@ -265,19 +276,25 @@ export const AIChat: React.FC = () => {
   const handleDepartmentSelected = (department: any) => {
     setDepartment(department)
     setShowDepartmentModal(false)
-    addBotMessage(`Excellent choice! ${department.name} is one of our specialized departments with experienced doctors. Now, let's find the most convenient location for you:`)
+    addBotMessage(`Excellent choice! ${department.name} is one of our specialized departments with experienced doctors.`, undefined, 1400)
     setTimeout(() => {
-      setShowLocationModal(true)
-    }, 1000)
+      addBotMessage("Now, let's find the most convenient location for you:", undefined, 1000)
+      setTimeout(() => {
+        setShowLocationModal(true)
+      }, 1800)
+    }, 2600)
   }
 
   const handleLocationSelected = (location: any) => {
     setLocation(location)
     setShowLocationModal(false)
-    addBotMessage(`Perfect! ${location.name} is a great choice. Now, please select your preferred date and time for the appointment:`)
+    addBotMessage(`Perfect! ${location.name} is a great choice.`, undefined, 1100)
     setTimeout(() => {
-      setShowDateModal(true)
-    }, 1000)
+      addBotMessage("Now, please select your preferred date and time for the appointment:", undefined, 1200)
+      setTimeout(() => {
+        setShowDateModal(true)
+      }, 2000)
+    }, 2400)
   }
 
   const handleDateTimeSelected = (doctor: any, timeSlot: string, date: Date | null) => {
@@ -290,62 +307,69 @@ export const AIChat: React.FC = () => {
       weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' 
     })
     
-    addBotMessage(`Wonderful! You've selected an appointment with ${doctor.name} on ${dateStr} at ${timeSlot}. Now I need some basic information to complete your booking:`)
+    addBotMessage(`Wonderful! You've selected an appointment with ${doctor.name} on ${dateStr} at ${timeSlot}.`, undefined, 1500)
     setTimeout(() => {
-      setShowPatientModal(true)
-    }, 1000)
+      addBotMessage("Now I need some basic information to complete your booking:", undefined, 1100)
+      setTimeout(() => {
+        setShowPatientModal(true)
+      }, 2000)
+    }, 2800)
   }
 
   const handlePatientInfoSubmitted = (patientData: any) => {
     setPatient(patientData)
     setShowPatientModal(false)
-    addBotMessage(`Thank you, ${patientData.firstName}! I have all the information needed. Let me confirm your appointment details and process your booking...`)
-    
+    addBotMessage(`Thank you, ${patientData.firstName}! I have all the information needed.`, undefined, 1200)
     setTimeout(() => {
-      setShowConfirmation(true)
-    }, 2000)
+      addBotMessage("Let me confirm your appointment details and process your booking...", undefined, 1400)
+      setTimeout(() => {
+        setShowConfirmation(true)
+      }, 2200)
+    }, 2500)
   }
 
   const handleConfirmationClose = () => {
     setShowConfirmation(false)
-    addBotMessage("🎉 Your appointment has been successfully booked! You'll be redirected to WhatsApp for any further assistance. Thank you for choosing KIMS Hospital!")
-    
+    addBotMessage("🎉 Your appointment has been successfully booked!", undefined, 1300)
     setTimeout(() => {
-      addBotMessage("Is there anything else I can help you with today?", 
-        <button
-          onClick={() => {
-            resetBooking()
-            setMessages([])
-            setIsInitialized(false)
-            // Restart the chat flow
-            setTimeout(() => {
-              addBotMessage("Hello! 👋 Welcome to KIMS Hospital. I'm here to help you book your appointment quickly and easily.")
+      addBotMessage("You'll be redirected to WhatsApp for any further assistance. Thank you for choosing KIMS Hospital!", undefined, 1600)
+        setTimeout(() => {
+          addBotMessage("Is there anything else I can help you with today?", 
+          <button
+            onClick={() => {
+              resetBooking()
+              setMessages([])
+              setIsInitialized(false)
+              // Restart the chat flow
               setTimeout(() => {
-                addBotMessage("How would you like to proceed?", 
-                  <div className="space-y-3">
-                    <button
-                      onClick={handleStartBooking}
-                      className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
-                    >
-                      📅 Book Another Appointment
-                    </button>
-                    <button
-                      onClick={handleChatMode}
-                      className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
-                    >
-                      💬 Chat with Bot
-                    </button>
-                  </div>
-                )
-              }, 1500)
-            }, 1000)
-          }}
-          className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
-        >
-          🔄 Book Another Appointment
-        </button>
-      )
-    }, 3000)
+                addBotMessage("Hello! 👋 Welcome to KIMS Hospital. I'm here to help you book your appointment quickly and easily.", undefined, 1000)
+                setTimeout(() => {
+                  addBotMessage("How would you like to proceed?", 
+                    <div className="space-y-3">
+                      <button
+                        onClick={handleStartBooking}
+                        className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
+                      >
+                        📅 Book Another Appointment
+                      </button>
+                      <button
+                        onClick={handleChatMode}
+                        className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
+                      >
+                        💬 Chat with Bot
+                      </button>
+                    </div>, 1800
+                  )
+                }, 2200)
+              }, 1000)
+            }}
+            className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
+          >
+            🔄 Book Another Appointment
+          </button>, 1200
+          )
+        }, 3200)
+      }, 2800)
   }
 
   return (
