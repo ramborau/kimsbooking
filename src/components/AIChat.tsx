@@ -113,11 +113,15 @@ export const AIChat: React.FC = () => {
 
   // Initialize chat with welcome message
   useEffect(() => {
-    if (!isInitialized) {
-      setTimeout(() => {
+    let timeoutId1: NodeJS.Timeout
+    let timeoutId2: NodeJS.Timeout
+    let timeoutId3: NodeJS.Timeout
+
+    if (!isInitialized && messages.length === 0) {
+      timeoutId1 = setTimeout(() => {
         addBotMessage("Hello! 👋 Welcome to KIMS Hospital. I'm here to help you book your appointment quickly and easily.", undefined, 1000)
         
-        setTimeout(() => {
+        timeoutId2 = setTimeout(() => {
           addBotMessage("How would you like to proceed?", 
             <div className="space-y-3">
               <button
@@ -137,9 +141,18 @@ export const AIChat: React.FC = () => {
           )
         }, 2000)
       }, 500)
-      setIsInitialized(true)
+      
+      timeoutId3 = setTimeout(() => {
+        setIsInitialized(true)
+      }, 5000)
     }
-  }, [isInitialized])
+
+    return () => {
+      if (timeoutId1) clearTimeout(timeoutId1)
+      if (timeoutId2) clearTimeout(timeoutId2)
+      if (timeoutId3) clearTimeout(timeoutId3)
+    }
+  }, [])
 
   const handleStartBooking = () => {
     setChatMode('booking')
@@ -303,17 +316,26 @@ export const AIChat: React.FC = () => {
           onClick={() => {
             resetBooking()
             setMessages([])
+            setIsInitialized(false)
             // Restart the chat flow
             setTimeout(() => {
               addBotMessage("Hello! 👋 Welcome to KIMS Hospital. I'm here to help you book your appointment quickly and easily.")
               setTimeout(() => {
-                addBotMessage("Let's get started with your appointment booking!", 
-                  <button
-                    onClick={handleStartBooking}
-                    className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
-                  >
-                    📅 Book Another Appointment
-                  </button>
+                addBotMessage("How would you like to proceed?", 
+                  <div className="space-y-3">
+                    <button
+                      onClick={handleStartBooking}
+                      className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
+                    >
+                      📅 Book Another Appointment
+                    </button>
+                    <button
+                      onClick={handleChatMode}
+                      className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
+                    >
+                      💬 Chat with Bot
+                    </button>
+                  </div>
                 )
               }, 1500)
             }, 1000)
