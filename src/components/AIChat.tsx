@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { User, Mail, Check, ChevronDown, Calendar, MessageCircle, CheckCircle, MapPin, Clock, RefreshCw } from 'lucide-react'
+import { User, Mail, Check, ChevronDown, Calendar, MessageCircle, CheckCircle, MapPin, Clock, RefreshCw, MoreVertical, Phone, X, Mic } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useBookingStore } from '@/store/bookingStore'
 import { DepartmentModal } from '@/components/chat/DepartmentModal'
@@ -99,6 +99,12 @@ export const AIChat: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const chatInputRef = useRef<HTMLTextAreaElement>(null)
   const [isInitialized, setIsInitialized] = useState(false)
+  const [showMenu, setShowMenu] = useState(false)
+  const [showCallPopup, setShowCallPopup] = useState(false)
+  const [isCalling, setIsCalling] = useState(false)
+  const [showToast, setShowToast] = useState(false)
+  const [toastMessage, setToastMessage] = useState('')
+  const [userHasReplied, setUserHasReplied] = useState(false)
 
   const {
     bookingData,
@@ -170,6 +176,8 @@ export const AIChat: React.FC = () => {
     }
     
     setMessages(prev => [...prev, newMessage])
+    setUserHasReplied(true)
+    saveUserInfoToCache()
   }
 
   // Format timestamp for display
@@ -179,6 +187,96 @@ export const AIChat: React.FC = () => {
       minute: '2-digit',
       hour12: true
     })
+  }
+
+  // Save user info to localStorage
+  const saveUserInfoToCache = () => {
+    if (collectedPatientInfo.firstName || collectedPatientInfo.lastName || collectedPatientInfo.email || collectedPatientInfo.mobile) {
+      localStorage.setItem('kimsUserInfo', JSON.stringify(collectedPatientInfo))
+    }
+  }
+
+  // Load user info from localStorage
+  const loadUserInfoFromCache = () => {
+    const cached = localStorage.getItem('kimsUserInfo')
+    if (cached) {
+      const userInfo = JSON.parse(cached)
+      setCollectedPatientInfo(userInfo)
+    }
+  }
+
+  // Clear cache and restart chat
+  const restartChat = () => {
+    localStorage.removeItem('kimsUserInfo')
+    setMessages([])
+    setIsInitialized(false)
+    setPatientInfoStep('name')
+    setCollectedPatientInfo({ firstName: '', lastName: '', email: '', mobile: '' })
+    setShowChatInput(false)
+    setUserHasReplied(false)
+    resetBooking()
+    setShowMenu(false)
+    
+    // Restart the chat flow
+    setTimeout(() => {
+      addBotMessage("Hello! Welcome to KIMS Hospital. I'm here to help you book your appointment quickly and easily.", undefined, 1000)
+      setTimeout(() => {
+        addBotMessage("First, let me get your basic information to serve you better. Please provide your name:", undefined, 1800)
+        
+        setTimeout(() => {
+          setPatientInfoStep('name')
+          setShowChatInput(true)
+          setTimeout(() => {
+            chatInputRef.current?.focus()
+          }, 100)
+        }, 3200)
+      }, 2000)
+    }, 500)
+  }
+
+  // Show toast notification
+  const showToastNotification = (message: string) => {
+    setToastMessage(message)
+    setShowToast(true)
+    setTimeout(() => {
+      setShowToast(false)
+    }, 3000)
+  }
+
+  // Handle WebRTC call
+  const handleWebRTCCall = async () => {
+    setShowCallPopup(false)
+    setIsCalling(true)
+    
+    try {
+      // Request microphone permission
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      
+      // Play ringing sound (simulated)
+      const audioContext = new (window.AudioContext || (window as Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)()
+      const oscillator = audioContext.createOscillator()
+      const gainNode = audioContext.createGain()
+      
+      oscillator.connect(gainNode)
+      gainNode.connect(audioContext.destination)
+      
+      oscillator.frequency.value = 440 // Ringing tone
+      gainNode.gain.value = 0.1
+      oscillator.start()
+      
+      // Stop after 3 seconds
+      setTimeout(() => {
+        oscillator.stop()
+        stream.getTracks().forEach(track => track.stop())
+        setIsCalling(false)
+        showToastNotification('Work in progress!!')
+      }, 3000)
+      
+    } catch (error) {
+      console.error('Microphone permission denied:', error)
+      setIsCalling(false)
+      showToastNotification('Microphone permission denied')
+    }
   }
 
   // Generate styled appointment confirmation message
@@ -509,6 +607,8 @@ export const AIChat: React.FC = () => {
     let timeoutId3: NodeJS.Timeout
 
     if (!isInitialized && messages.length === 0) {
+      // Load cached user info if available
+      loadUserInfoFromCache()
       timeoutId1 = setTimeout(() => {
         addBotMessage("Hello! Welcome to KIMS Hospital. I'm here to help you book your appointment quickly and easily.", undefined, 1000)
         
@@ -830,16 +930,54 @@ Now, how would you like to proceed?`,
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col" style={{backgroundImage: 'url(https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png)', backgroundRepeat: 'repeat', backgroundSize: 'auto'}}>
       {/* Header */}
       <div className="bg-white shadow-sm border-b px-4 py-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-white border border-primary flex items-center justify-center">
-            <img src="/kimsbot.png" alt="KIMS Bot" className="w-10 h-10 rounded-full object-cover" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-white border border-primary flex items-center justify-center">
+              <img src="/kimsbot.png" alt="KIMS Bot" className="w-10 h-10 rounded-full object-cover" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                KIMS Assistant
+                <img src="https://static.whatsapp.net/rsrc.php/v4/yM/r/SGDtYg_EYce.png" alt="WhatsApp" className="w-5 h-5" />
+              </h1>
+              <p className="text-sm text-gray-500">AI-Powered Appointment Booking</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-              KIMS Assistant
-              <img src="https://static.whatsapp.net/rsrc.php/v4/yM/r/SGDtYg_EYce.png" alt="WhatsApp" className="w-5 h-5" />
-            </h1>
-            <p className="text-sm text-gray-500">AI-Powered Appointment Booking</p>
+          
+          {/* Header Actions */}
+          <div className="flex items-center gap-2">
+            {/* Call Button */}
+            <button
+              onClick={() => setShowCallPopup(true)}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              title="Call"
+            >
+              <Phone className="w-5 h-5 text-gray-600" strokeWidth={1.5} />
+            </button>
+            
+            {/* Menu Button */}
+            <div className="relative">
+              <button
+                onClick={() => setShowMenu(!showMenu)}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                title="Menu"
+              >
+                <MoreVertical className="w-5 h-5 text-gray-600" strokeWidth={1.5} />
+              </button>
+              
+              {/* Dropdown Menu */}
+              {showMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                  <button
+                    onClick={restartChat}
+                    className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-2"
+                  >
+                    <RefreshCw className="w-4 h-4" strokeWidth={1.5} />
+                    Restart Chat
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -859,7 +997,13 @@ Now, how would you like to proceed?`,
                   </div>
                   {message.component && (
                     <div className="mt-3 rounded-2xl overflow-hidden" style={{backgroundColor: 'transparent', boxShadow: 'none', border: 'none'}}>
-                      {message.component}
+                      {/* Check if component has buttons and disable them if user has replied */}
+                      {userHasReplied && React.isValidElement(message.component) ? 
+                        React.cloneElement(message.component as React.ReactElement, {
+                          style: { pointerEvents: 'none', opacity: 0.6 }
+                        }) : 
+                        message.component
+                      }
                     </div>
                   )}
                   <div className="mt-1 ml-1">
@@ -1289,6 +1433,63 @@ Now, how would you like to proceed?`,
                 className="h-4 object-contain"
               />
             </a>
+          </div>
+        </div>
+      )}
+
+      {/* Call Popup */}
+      {showCallPopup && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Call Options</h3>
+              <button
+                onClick={() => setShowCallPopup(false)}
+                className="p-1 hover:bg-gray-100 rounded-full"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-3">
+              <button
+                onClick={handleWebRTCCall}
+                className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-4 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
+              >
+                <Mic className="w-5 h-5" />
+                Continue Call Here
+              </button>
+              
+              <a
+                href="tel:918390083900"
+                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-4 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2 block"
+              >
+                <Phone className="w-5 h-5" />
+                Dial Phone Number
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Calling Overlay */}
+      {isCalling && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-white rounded-xl shadow-xl p-8 text-center">
+            <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+              <Phone className="w-10 h-10 text-primary" />
+            </div>
+            <h3 className="text-xl font-semibold mb-2">Calling...</h3>
+            <p className="text-gray-600">Connecting your call</p>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {showToast && (
+        <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 z-50 animate-in slide-in-from-bottom-2 duration-300">
+          <div className="bg-gray-800 text-white px-6 py-3 rounded-full shadow-lg">
+            {toastMessage}
           </div>
         </div>
       )}
