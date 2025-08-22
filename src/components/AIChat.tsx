@@ -65,16 +65,15 @@ const FormattedText: React.FC<{ content: string }> = ({ content }) => {
   // Parse text for **bold**, *italic*, and preserve emojis
   const parseText = (text: string) => {
     const parts: (string | JSX.Element)[] = []
-    let currentIndex = 0
     let keyCounter = 0
 
     // First handle bold text **text**
-    text = text.replace(/\*\*(.*?)\*\*/g, (match, boldText) => {
+    text = text.replace(/\*\*(.*?)\*\*/g, (_, boldText) => {
       return `<BOLD>${boldText}</BOLD>`
     })
 
     // Then handle italic text *text*
-    text = text.replace(/\*(.*?)\*/g, (match, italicText) => {
+    text = text.replace(/\*(.*?)\*/g, (_, italicText) => {
       return `<ITALIC>${italicText}</ITALIC>`
     })
 
