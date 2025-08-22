@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Bot, User } from 'lucide-react'
+import { User, Mail, Check, ChevronDown, Calendar, MessageCircle, CheckCircle, MapPin, Clock } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { useBookingStore } from '@/store/bookingStore'
-import { BookingConfirmationPopup } from '@/components/booking/BookingConfirmationPopup'
 import { DepartmentModal } from '@/components/chat/DepartmentModal'
 import { LocationModal } from '@/components/chat/LocationModal'
 import { DateTimeModal } from '@/components/chat/DateTimeModal'
 import { PatientModal } from '@/components/chat/PatientModal'
+import countryData from '../../countrycode.json'
 
 interface Message {
   id: string
@@ -14,6 +15,26 @@ interface Message {
   timestamp: Date
   component?: React.ReactNode
 }
+
+const emailDomains = [
+  'gmail.com',
+  'yahoo.com',
+  'hotmail.com',
+  'outlook.com',
+  'icloud.com',
+  'protonmail.com',
+  'aol.com',
+  'mail.com'
+]
+
+interface Country {
+  name: string
+  phone: string[]
+  image: string
+  emoji: string
+}
+
+type CountryData = Record<string, Country>
 
 interface TypingBubbleProps {
   isVisible: boolean
@@ -24,8 +45,8 @@ const TypingBubble: React.FC<TypingBubbleProps> = ({ isVisible }) => {
 
   return (
     <div className="flex items-center gap-3 mb-4">
-      <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-        <Bot className="w-5 h-5 text-white" strokeWidth={1.25} />
+      <div className="w-10 h-10 rounded-full bg-white border border-primary flex items-center justify-center flex-shrink-0">
+        <img src="/kimsbot.png" alt="KIMS Bot" className="w-8 h-8 rounded-full object-cover" />
       </div>
       <div className="bg-white rounded-2xl rounded-bl-md px-4 py-3 shadow-sm border animate-pulse">
         <div className="flex gap-1">
@@ -41,21 +62,40 @@ const TypingBubble: React.FC<TypingBubbleProps> = ({ isVisible }) => {
 export const AIChat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([])
   const [isTyping, setIsTyping] = useState(false)
-  const [showConfirmation, setShowConfirmation] = useState(false)
-  const [_chatMode, setChatMode] = useState<'booking' | 'chat'>('booking')
+  const [, setChatMode] = useState<'booking' | 'chat'>('booking')
   const [userInput, setUserInput] = useState('')
   const [showDepartmentModal, setShowDepartmentModal] = useState(false)
   const [showLocationModal, setShowLocationModal] = useState(false)
   const [showDateModal, setShowDateModal] = useState(false)
   const [showPatientModal, setShowPatientModal] = useState(false)
   const [showChatInput, setShowChatInput] = useState(false)
-  const [patientInfoStep, setPatientInfoStep] = useState<'firstName' | 'lastName' | 'email' | 'mobile' | 'complete'>('firstName')
+  const [patientInfoStep, setPatientInfoStep] = useState<'name' | 'email' | 'mobile' | 'complete'>('name')
   const [collectedPatientInfo, setCollectedPatientInfo] = useState({
     firstName: '',
     lastName: '',
     email: '',
     mobile: ''
   })
+  const [validation, setValidation] = useState({
+    firstName: false,
+    lastName: false,
+    email: false,
+    mobile: false
+  })
+  const [touched, setTouched] = useState({
+    firstName: false,
+    lastName: false,
+    email: false,
+    mobile: false
+  })
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [emailSuggestions, setEmailSuggestions] = useState<string[]>([])
+  const [showCountryDropdown, setShowCountryDropdown] = useState(false)
+  const [selectedCountry, setSelectedCountry] = useState<{code: string, data: Country}>(
+    { code: 'IN', data: (countryData as CountryData)['IN'] }
+  )
+  const [isDetectingCountry, setIsDetectingCountry] = useState(true)
+  const countryButtonRef = React.useRef<HTMLButtonElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const chatInputRef = useRef<HTMLTextAreaElement>(null)
   const [isInitialized, setIsInitialized] = useState(false)
@@ -83,7 +123,7 @@ export const AIChat: React.FC = () => {
   // Play notification sound
   const playNotificationSound = () => {
     // Create a simple notification sound using Web Audio API
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+    const audioContext = new (window.AudioContext || (window as Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)()
     const oscillator = audioContext.createOscillator()
     const gainNode = audioContext.createGain()
     
@@ -132,7 +172,327 @@ export const AIChat: React.FC = () => {
     setMessages(prev => [...prev, newMessage])
   }
 
-  // Initialize chat with welcome message
+  // Format timestamp for display
+  const formatTimestamp = (timestamp: Date) => {
+    return timestamp.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    })
+  }
+
+  // Generate styled appointment confirmation message
+  const generateAppointmentConfirmation = () => {
+    const bookingRef = Math.random().toString(36).substr(2, 9).toUpperCase()
+    
+    return (
+      <div className="space-y-4">
+        {/* Success Header */}
+        <div className="flex items-center gap-3 bg-green-50 p-4 rounded-xl border border-green-200">
+          <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+            <CheckCircle className="w-5 h-5 text-green-600" strokeWidth={1.5} />
+          </div>
+          <div>
+            <h3 className="font-bold text-green-800">Appointment Confirmed!</h3>
+            <p className="text-sm text-green-600">Your booking has been successfully processed</p>
+          </div>
+        </div>
+
+        {/* Doctor Information */}
+        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
+              <img 
+                src={bookingData.doctor?.image || "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTuj2a_Lkjnw0IRzGPJgasIV0HWQjiMGP4M4g&s"}
+                alt={bookingData.doctor?.name}
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div className="flex-1">
+              <h4 className="font-bold text-gray-900">{bookingData.doctor?.name}</h4>
+              <p className="text-sm text-gray-600 mb-2">{bookingData.doctor?.qualification}</p>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <MapPin className="w-4 h-4" strokeWidth={1.25} />
+                <span>{bookingData.location?.name}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Appointment Details */}
+        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+          <h5 className="font-semibold text-gray-900 mb-3">Appointment Details</h5>
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                <Calendar className="w-4 h-4 text-primary" strokeWidth={1.25} />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900">
+                  {bookingData.date?.toLocaleDateString('en-US', { 
+                    weekday: 'long',
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric'
+                  })}
+                </p>
+                <p className="text-xs text-gray-600">Date</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                <Clock className="w-4 h-4 text-primary" strokeWidth={1.25} />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900">{bookingData.timeSlot}</p>
+                <p className="text-xs text-gray-600">Time</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Patient Information */}
+        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+          <h5 className="font-semibold text-gray-900 mb-3">Patient Details</h5>
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">Name</span>
+              <span className="text-sm font-medium text-gray-900">
+                {bookingData.patient?.firstName} {bookingData.patient?.lastName}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">Email</span>
+              <span className="text-sm font-medium text-gray-900">{bookingData.patient?.email}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">Phone</span>
+              <span className="text-sm font-medium text-gray-900">
+                {bookingData.patient?.selectedCountryCode} {bookingData.patient?.mobile}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Booking Reference */}
+        <div className="bg-primary/5 rounded-xl p-4 text-center border border-primary/20">
+          <p className="text-sm text-gray-600 mb-1">Booking Reference</p>
+          <p className="text-xl font-bold text-primary">#{bookingRef}</p>
+        </div>
+
+        {/* Action Button */}
+        <button
+          onClick={() => {
+            // Reset for new booking
+            resetBooking()
+            setIsInitialized(false)
+            setPatientInfoStep('name')
+            setCollectedPatientInfo({ firstName: '', lastName: '', email: '', mobile: '' })
+            setShowChatInput(false)
+            // Restart the chat flow
+            setTimeout(() => {
+              addBotMessage("Hello! Welcome to KIMS Hospital. I'm here to help you book your appointment quickly and easily.", undefined, 1000)
+              setTimeout(() => {
+                addBotMessage("First, let me get your basic information to serve you better. Please provide your name:", undefined, 1800)
+                
+                setTimeout(() => {
+                  setPatientInfoStep('name')
+                  setShowChatInput(true)
+                  setTimeout(() => {
+                    chatInputRef.current?.focus()
+                  }, 100)
+                }, 3200)
+              }, 2000)
+            }, 500)
+          }}
+          className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
+        >
+          🔄 Book Another Appointment
+        </button>
+      </div>
+    )
+  }
+
+  // Send webhook and show confirmation message
+  const sendWebhookAndShowConfirmation = async () => {
+    const bookingRef = Math.random().toString(36).substr(2, 9).toUpperCase()
+    
+    // Send webhook data
+    try {
+      const countryCode = bookingData.patient?.selectedCountryCode?.replace('+', '') || '91'
+      const mobileNumber = bookingData.patient?.mobile || ''
+      const formattedPhone = `${countryCode}${mobileNumber}`
+      
+      const payload = {
+        bookingReference: bookingRef,
+        timestamp: new Date().toISOString(),
+        department: bookingData.department?.name || 'Unknown Department',
+        hospital: bookingData.location?.name || 'Unknown Hospital', 
+        date: bookingData.date?.toLocaleDateString('en-US', { 
+          weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' 
+        }) || 'Unknown Date',
+        doctor: bookingData.doctor?.name || 'Unknown Doctor',
+        time: bookingData.timeSlot || 'Unknown Time',
+        patient: {
+          name: `${bookingData.patient?.firstName || ''} ${bookingData.patient?.lastName || ''}`.trim() || 'Unknown Patient',
+          email: bookingData.patient?.email || 'unknown@email.com',
+          mobile: mobileNumber,
+          formatted_phone: formattedPhone
+        }
+      }
+      
+      console.log('📤 Sending webhook data:', payload)
+      
+      await fetch('https://webhooks.botpe.in/webhook/68a8bbc881128cc4046e9fb4', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      })
+    } catch (error) {
+      console.error('Webhook error:', error)
+    }
+    
+    // Show confirmation message
+    addBotMessage("", generateAppointmentConfirmation(), 800)
+  }
+
+  // Validation functions - exactly like PatientForm
+  const validateFirstName = (value: string) => {
+    const isValid = value.trim().length >= 2 && /^[a-zA-Z\s]+$/.test(value)
+    setValidation(prev => ({ ...prev, firstName: isValid }))
+    return isValid
+  }
+
+  const validateLastName = (value: string) => {
+    const isValid = value.trim().length >= 2 && /^[a-zA-Z\s]+$/.test(value)
+    setValidation(prev => ({ ...prev, lastName: isValid }))
+    return isValid
+  }
+
+  const validateEmail = (value: string) => {
+    const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+    setValidation(prev => ({ ...prev, email: isValid }))
+    return isValid
+  }
+
+  const validatePhone = (value: string) => {
+    const phoneDigits = value.replace(/\D/g, '')
+    const isValid = phoneDigits.length >= 10 && phoneDigits.length <= 15
+    setValidation(prev => ({ ...prev, mobile: isValid }))
+    return isValid
+  }
+
+  // Patient form handlers
+  const handleFirstNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    if (/^[a-zA-Z\s]*$/.test(value)) {
+      setCollectedPatientInfo(prev => ({ ...prev, firstName: value }))
+      validateFirstName(value)
+      if (!touched.firstName) {
+        setTouched(prev => ({ ...prev, firstName: true }))
+      }
+    }
+  }
+
+  const handleLastNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    if (/^[a-zA-Z\s]*$/.test(value)) {
+      setCollectedPatientInfo(prev => ({ ...prev, lastName: value }))
+      validateLastName(value)
+      if (!touched.lastName) {
+        setTouched(prev => ({ ...prev, lastName: true }))
+      }
+    }
+  }
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setCollectedPatientInfo(prev => ({ ...prev, email: value }))
+    
+    validateEmail(value)
+    if (!touched.email) {
+      setTouched(prev => ({ ...prev, email: true }))
+    }
+    
+    // Show email suggestions after @
+    if (value.includes('@') && !value.includes('.')) {
+      const [username, domain] = value.split('@')
+      if (domain) {
+        const filtered = emailDomains.filter(d => d.toLowerCase().startsWith(domain.toLowerCase()))
+        setEmailSuggestions(filtered.map(d => `${username}@${d}`))
+        setShowSuggestions(filtered.length > 0)
+      } else {
+        setEmailSuggestions(emailDomains.map(d => `${username}@${d}`))
+        setShowSuggestions(true)
+      }
+    } else {
+      setShowSuggestions(false)
+    }
+  }
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    const numbersOnly = value.replace(/\D/g, '')
+    
+    if (numbersOnly.length <= 15) {
+      setCollectedPatientInfo(prev => ({ ...prev, mobile: numbersOnly }))
+      validatePhone(numbersOnly)
+      if (!touched.mobile) {
+        setTouched(prev => ({ ...prev, mobile: true }))
+      }
+    }
+  }
+
+  const selectEmailSuggestion = (suggestion: string) => {
+    setCollectedPatientInfo(prev => ({ ...prev, email: suggestion }))
+    setShowSuggestions(false)
+    validateEmail(suggestion)
+  }
+
+  // Auto-detect user's country from IP
+  useEffect(() => {
+    const detectCountry = async () => {
+      try {
+        const response = await fetch('https://ipapi.co/json/')
+        const data = await response.json()
+        
+        if (data.country_code) {
+          const countryCode = data.country_code.toUpperCase()
+          const countryInfo = (countryData as CountryData)[countryCode]
+          
+          if (countryInfo && countryInfo.phone && countryInfo.phone.length > 0) {
+            setSelectedCountry({ code: countryCode, data: countryInfo })
+          }
+        }
+      } catch (error) {
+        console.log('Could not detect country, using default (India)')
+      } finally {
+        setIsDetectingCountry(false)
+      }
+    }
+    
+    detectCountry()
+  }, [])
+
+  // Close country dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element
+      if (showCountryDropdown && !target.closest('.country-selector')) {
+        setShowCountryDropdown(false)
+      }
+    }
+    
+    if (showCountryDropdown) {
+      document.addEventListener('click', handleClickOutside)
+      return () => document.removeEventListener('click', handleClickOutside)
+    }
+  }, [showCountryDropdown])
+
+  // Initialize chat with welcome message and patient info collection
   useEffect(() => {
     let timeoutId1: NodeJS.Timeout
     let timeoutId2: NodeJS.Timeout
@@ -140,26 +500,18 @@ export const AIChat: React.FC = () => {
 
     if (!isInitialized && messages.length === 0) {
       timeoutId1 = setTimeout(() => {
-        addBotMessage("Hello! 👋 Welcome to KIMS Hospital. I'm here to help you book your appointment quickly and easily.", undefined, 1000)
+        addBotMessage("Hello! Welcome to KIMS Hospital. I'm here to help you book your appointment quickly and easily.", undefined, 1000)
         
         timeoutId2 = setTimeout(() => {
-          addBotMessage("How would you like to proceed?", 
-            <div className="space-y-3">
-              <button
-                onClick={handleStartBooking}
-                className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
-              >
-                📅 Book An Appointment
-              </button>
-              <button
-                onClick={handleChatMode}
-                className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
-              >
-                💬 Chat with Bot
-              </button>
-            </div>,
-            2000
-          )
+          addBotMessage("First, let me get your basic information to serve you better. Please provide your name:", undefined, 1800)
+          
+          setTimeout(() => {
+            setPatientInfoStep('name')
+            setShowChatInput(true)
+            setTimeout(() => {
+              chatInputRef.current?.focus()
+            }, 100)
+          }, 3200)
         }, 2000)
       }, 500)
       
@@ -173,14 +525,14 @@ export const AIChat: React.FC = () => {
       if (timeoutId2) clearTimeout(timeoutId2)
       if (timeoutId3) clearTimeout(timeoutId3)
     }
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleStartBooking = () => {
     setChatMode('booking')
     setShowChatInput(false) // Hide chat input when switching to booking mode
     
     // Add user message for button selection
-    addUserMessage("📅 Book An Appointment")
+    addUserMessage("Book An Appointment")
     
     addBotMessage("Great! First, please select the medical department you need:", undefined, 1200)
     setTimeout(() => {
@@ -207,6 +559,12 @@ export const AIChat: React.FC = () => {
   }
 
   const handleUserMessage = () => {
+    // Handle patient info collection
+    if (patientInfoStep !== 'complete' && showChatInput) {
+      handlePatientFormSubmit()
+      return
+    }
+
     if (!userInput.trim()) return
 
     const messageText = userInput.trim()
@@ -231,69 +589,76 @@ export const AIChat: React.FC = () => {
     }
   }
 
-  const handlePatientInfoStep = (input: string) => {
-    const trimmedInput = input.trim()
-    
+  // Handle form submission for each step
+  const handlePatientFormSubmit = () => {
     switch (patientInfoStep) {
-      case 'firstName':
-        if (trimmedInput.length >= 2) {
-          setCollectedPatientInfo(prev => ({ ...prev, firstName: trimmedInput }))
-          addBotMessage(`Nice to meet you, ${trimmedInput}! What's your last name?`, undefined, 800)
-          setPatientInfoStep('lastName')
-        } else {
-          addBotMessage("Please enter a valid first name (at least 2 characters).", undefined, 800)
-        }
-        break
-        
-      case 'lastName':
-        if (trimmedInput.length >= 2) {
-          setCollectedPatientInfo(prev => ({ ...prev, lastName: trimmedInput }))
-          addBotMessage(`Thank you, ${collectedPatientInfo.firstName} ${trimmedInput}! What's your email address?`, undefined, 800)
-          setPatientInfoStep('email')
-        } else {
-          addBotMessage("Please enter a valid last name (at least 2 characters).", undefined, 800)
+      case 'name':
+        if (validation.firstName && validation.lastName && 
+            collectedPatientInfo.firstName.trim() && collectedPatientInfo.lastName.trim()) {
+          addUserMessage(`${collectedPatientInfo.firstName} ${collectedPatientInfo.lastName}`)
+          setShowChatInput(false)
+          addBotMessage(`Nice to meet you, ${collectedPatientInfo.firstName} ${collectedPatientInfo.lastName}! ${collectedPatientInfo.firstName}, please provide your email address:`, undefined, 800)
+          setTimeout(() => {
+            setPatientInfoStep('email')
+            setShowChatInput(true)
+            setTimeout(() => {
+              chatInputRef.current?.focus()
+            }, 100)
+          }, 1200)
         }
         break
         
       case 'email':
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-        if (emailRegex.test(trimmedInput)) {
-          setCollectedPatientInfo(prev => ({ ...prev, email: trimmedInput }))
-          addBotMessage("Great! Now please provide your mobile number.", undefined, 800)
-          setPatientInfoStep('mobile')
-        } else {
-          addBotMessage("Please enter a valid email address (e.g., john@example.com).", undefined, 800)
+        if (validation.email && collectedPatientInfo.email.trim()) {
+          addUserMessage(collectedPatientInfo.email)
+          setShowChatInput(false)
+          addBotMessage(`Great! Finally, ${collectedPatientInfo.firstName}, please provide your mobile number:`, undefined, 800)
+          setTimeout(() => {
+            setPatientInfoStep('mobile')
+            setShowChatInput(true)
+            setTimeout(() => {
+              chatInputRef.current?.focus()
+            }, 100)
+          }, 1200)
         }
         break
         
       case 'mobile':
-        const mobileRegex = /^[0-9]{10}$/
-        if (mobileRegex.test(trimmedInput.replace(/[^\d]/g, ''))) {
-          const mobile = trimmedInput.replace(/[^\d]/g, '')
-          setCollectedPatientInfo(prev => ({ ...prev, mobile }))
+        if (validation.mobile && collectedPatientInfo.mobile.trim()) {
+          addUserMessage(`${selectedCountry.data.phone[0]} ${collectedPatientInfo.mobile}`)
           setPatientInfoStep('complete')
+          setShowChatInput(false)
           
           // Complete patient info and proceed
           const fullPatientInfo = {
             ...collectedPatientInfo,
-            mobile
+            selectedCountryCode: selectedCountry.data.phone[0]
           }
           
           setPatient(fullPatientInfo)
-          setShowChatInput(false) // Hide chat input
           
           addBotMessage(`Perfect! I have all your information:
 • Name: ${fullPatientInfo.firstName} ${fullPatientInfo.lastName}  
 • Email: ${fullPatientInfo.email}
-• Mobile: ${fullPatientInfo.mobile}
+• Mobile: ${fullPatientInfo.selectedCountryCode} ${fullPatientInfo.mobile}
 
-Processing your appointment booking...`, undefined, 1200)
-          
-          setTimeout(() => {
-            setShowConfirmation(true)
-          }, 2500)
-        } else {
-          addBotMessage("Please enter a valid 10-digit mobile number.", undefined, 800)
+Now, how would you like to proceed?`, 
+            <div className="space-y-3">
+              <button
+                onClick={handleStartBooking}
+                className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
+              >
+                <Calendar className="w-5 h-5" strokeWidth={1.25} />
+                Book An Appointment
+              </button>
+              <button
+                onClick={handleChatMode}
+                className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
+              >
+                <MessageCircle className="w-5 h-5" strokeWidth={1.25} />
+                Chat with Bot
+              </button>
+            </div>, 1200)
         }
         break
     }
@@ -301,13 +666,6 @@ Processing your appointment booking...`, undefined, 1200)
 
   const processUserMessage = (message: string) => {
     const messageText = message.trim()
-    
-    // Handle patient info collection steps
-    if (patientInfoStep !== 'complete') {
-      handlePatientInfoStep(messageText)
-      return
-    }
-    
     const lowerMessage = messageText.toLowerCase()
     
     // Check for dentist request
@@ -340,15 +698,12 @@ Processing your appointment booking...`, undefined, 1200)
                 setDate(new Date(Date.now() + 24 * 60 * 60 * 1000)) // Tomorrow
                 setLocation({ id: 1, name: 'KIMS Main Campus' })
                 
-                // Start patient info collection
+                // Patient info already collected, proceed to confirmation
                 setTimeout(() => {
-                  addBotMessage("Perfect! Now I need your contact information to complete the booking. Let's start with your first name:", undefined, 1000)
+                  addBotMessage("Perfect! Processing your appointment booking...", undefined, 1000)
                   setTimeout(() => {
-                    setPatientInfoStep('firstName')
-                    setShowChatInput(true)
-                    setTimeout(() => {
-                      chatInputRef.current?.focus()
-                    }, 100)
+                    // Send confirmation message with webhook
+                    sendWebhookAndShowConfirmation()
                   }, 1800)
                 }, 800)
               }}
@@ -386,7 +741,7 @@ Processing your appointment booking...`, undefined, 1200)
   }
 
 
-  const handleDepartmentSelected = (department: any) => {
+  const handleDepartmentSelected = (department: {id: number, name: string}) => {
     setDepartment(department)
     setShowDepartmentModal(false)
     
@@ -402,7 +757,7 @@ Processing your appointment booking...`, undefined, 1200)
     }, 2600)
   }
 
-  const handleLocationSelected = (location: any) => {
+  const handleLocationSelected = (location: {id: number, name: string}) => {
     setLocation(location)
     setShowLocationModal(false)
     
@@ -418,7 +773,7 @@ Processing your appointment booking...`, undefined, 1200)
     }, 2400)
   }
 
-  const handleDateTimeSelected = (doctor: any, timeSlot: string, date: Date | null) => {
+  const handleDateTimeSelected = (doctor: {id: number, name: string}, timeSlot: string, date: Date | null) => {
     setDoctor(doctor)
     setTimeSlot(timeSlot)
     if (date) setDate(date)
@@ -433,27 +788,17 @@ Processing your appointment booking...`, undefined, 1200)
     
     addBotMessage(`Wonderful! You've selected an appointment with ${doctor.name} on ${dateStr} at ${timeSlot}.`, undefined, 1500)
     setTimeout(() => {
-      // Check if patient info is already collected
-      if (patientInfoStep === 'complete' && collectedPatientInfo.firstName) {
-        addBotMessage("Using your previously provided information. Processing your booking...", undefined, 1100)
-        setTimeout(() => {
-          setShowConfirmation(true)
-        }, 2200)
-      } else {
-        addBotMessage("Now I need some basic information to complete your booking. Let's start with your first name:", undefined, 1100)
-        setTimeout(() => {
-          setPatientInfoStep('firstName')
-          setShowChatInput(true)
-          setTimeout(() => {
-            chatInputRef.current?.focus()
-          }, 100)
-        }, 2000)
-      }
+      // Patient info already collected at start, proceed to confirmation
+      addBotMessage("Using your previously provided information. Processing your booking...", undefined, 1100)
+      setTimeout(() => {
+        // Send confirmation message with webhook
+        sendWebhookAndShowConfirmation()
+      }, 2200)
     }, 2800)
   }
 
   // Legacy handler kept for modal-based booking (if needed)
-  const handlePatientInfoSubmitted = (patientData: any) => {
+  const handlePatientInfoSubmitted = (patientData: {firstName: string, lastName: string, email: string, mobile: string}) => {
     setPatient(patientData)
     setShowPatientModal(false)
     
@@ -464,68 +809,20 @@ Processing your appointment booking...`, undefined, 1200)
     setTimeout(() => {
       addBotMessage("Let me confirm your appointment details and process your booking...", undefined, 1400)
       setTimeout(() => {
-        setShowConfirmation(true)
+        // Send confirmation message with webhook
+        sendWebhookAndShowConfirmation()
       }, 2200)
     }, 2500)
   }
 
-  const handleConfirmationClose = () => {
-    setShowConfirmation(false)
-    addBotMessage("🎉 Your appointment has been successfully booked!", undefined, 1300)
-    setTimeout(() => {
-      addBotMessage("Your appointment is confirmed! Thank you for choosing KIMS Hospital. Our team will contact you shortly.", undefined, 1600)
-        setTimeout(() => {
-          addBotMessage("Is there anything else I can help you with today?", 
-          <button
-            onClick={() => {
-              // Add user message for restart button
-              addUserMessage("🔄 Book Another Appointment")
-              
-              // Clear only booking data, keep messages with user selection
-              resetBooking()
-              setIsInitialized(false)
-              setPatientInfoStep('firstName')
-              setCollectedPatientInfo({ firstName: '', lastName: '', email: '', mobile: '' })
-              setShowChatInput(false)
-              // Restart the chat flow
-              setTimeout(() => {
-                addBotMessage("Hello! 👋 Welcome to KIMS Hospital. I'm here to help you book your appointment quickly and easily.", undefined, 1000)
-                setTimeout(() => {
-                  addBotMessage("How would you like to proceed?", 
-                    <div className="space-y-3">
-                      <button
-                        onClick={handleStartBooking}
-                        className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
-                      >
-                        📅 Book Another Appointment
-                      </button>
-                      <button
-                        onClick={handleChatMode}
-                        className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
-                      >
-                        💬 Chat with Bot
-                      </button>
-                    </div>, 1800
-                  )
-                }, 2200)
-              }, 1000)
-            }}
-            className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
-          >
-            🔄 Book Another Appointment
-          </button>, 1200
-          )
-        }, 3200)
-      }, 2800)
-  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col" style={{backgroundImage: 'url(https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png)', backgroundRepeat: 'repeat', backgroundSize: '200px 200px'}}>
       {/* Header */}
       <div className="bg-white shadow-sm border-b px-4 py-4">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center">
-            <Bot className="w-6 h-6 text-white" strokeWidth={1.25} />
+          <div className="w-12 h-12 rounded-full bg-white border border-primary flex items-center justify-center">
+            <img src="/kimsbot.png" alt="KIMS Bot" className="w-10 h-10 rounded-full object-cover" />
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900">KIMS Assistant</h1>
@@ -540,28 +837,34 @@ Processing your appointment booking...`, undefined, 1200)
           <div key={message.id} className="animate-in slide-in-from-bottom-2 duration-300">
             {message.type === 'bot' || message.type === 'screen' ? (
               <div className="flex items-start gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                  <Bot className="w-5 h-5 text-white" strokeWidth={1.25} />
+                <div className="w-10 h-10 rounded-full bg-white border border-primary flex items-center justify-center flex-shrink-0">
+                  <img src="/kimsbot.png" alt="KIMS Bot" className="w-8 h-8 rounded-full object-cover" />
                 </div>
                 <div className="max-w-[80%] min-w-0">
                   <div className="bg-white rounded-2xl rounded-bl-md px-4 py-3 shadow-sm border">
                     <p className="text-gray-800 leading-relaxed">{message.content}</p>
                   </div>
                   {message.component && (
-                    <div className="mt-3 bg-white rounded-2xl shadow-sm border overflow-hidden">
+                    <div className="mt-3 rounded-2xl overflow-hidden" style={{backgroundColor: 'transparent', boxShadow: 'none', border: 'none'}}>
                       {message.component}
                     </div>
                   )}
+                  <div className="mt-1 ml-1">
+                    <span className="text-xs text-gray-400">{formatTimestamp(message.timestamp)}</span>
+                  </div>
                 </div>
               </div>
             ) : (
               <div className="flex items-start gap-3 mb-4 flex-row-reverse">
-                <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
-                  <User className="w-5 h-5 text-gray-600" strokeWidth={1.25} />
+                <div className="w-10 h-10 rounded-full bg-white border border-primary flex items-center justify-center flex-shrink-0">
+                  <img src="/user.png" alt="User" className="w-8 h-8 rounded-full object-cover" />
                 </div>
                 <div className="max-w-[80%]">
-                  <div className="bg-primary text-white rounded-2xl rounded-br-md px-4 py-3 shadow-sm">
+                  <div className="rounded-2xl rounded-br-md px-4 py-3 shadow-sm" style={{backgroundColor: '#ffeeee'}}>
                     <p className="leading-relaxed">{message.content}</p>
+                  </div>
+                  <div className="mt-1 mr-1 text-right">
+                    <span className="text-xs text-gray-400">{formatTimestamp(message.timestamp)}</span>
                   </div>
                 </div>
               </div>
@@ -573,12 +876,7 @@ Processing your appointment booking...`, undefined, 1200)
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Booking Confirmation Popup */}
-      <BookingConfirmationPopup
-        isVisible={showConfirmation}
-        bookingData={bookingData}
-        onClose={handleConfirmationClose}
-      />
+
 
       {/* Department Selection Modal */}
       <DepartmentModal
@@ -612,63 +910,349 @@ Processing your appointment booking...`, undefined, 1200)
       {showChatInput && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-10">
           <div className="max-w-4xl mx-auto">
-            <div className="flex items-end gap-3">
-              <div className="flex-1">
-                <textarea
-                  ref={chatInputRef}
-                  value={userInput}
-                  onChange={(e) => setUserInput(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder={
-                    patientInfoStep === 'firstName' ? "Enter your first name..." :
-                    patientInfoStep === 'lastName' ? "Enter your last name..." :
-                    patientInfoStep === 'email' ? "Enter your email address..." :
-                    patientInfoStep === 'mobile' ? "Enter your mobile number..." :
-                    "Type your message here..."
-                  }
-                  className="w-full p-3 border border-gray-300 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  rows={1}
-                  style={{ 
-                    minHeight: '44px',
-                    maxHeight: '120px',
-                    scrollbarWidth: 'thin'
-                  }}
-                  onInput={(e) => {
-                    const target = e.target as HTMLTextAreaElement
-                    target.style.height = 'auto'
-                    target.style.height = Math.min(target.scrollHeight, 120) + 'px'
-                  }}
-                />
+            {/* Patient Info Collection Inputs */}
+            {patientInfoStep !== 'complete' ? (
+              <div>
+                {patientInfoStep === 'name' && (
+                  <div className="flex items-end gap-3">
+                    <div className="flex-1 grid grid-cols-2 gap-3">
+                      {/* First Name */}
+                      <div className="relative">
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10">
+                          <User className="w-4 h-4 text-gray-400" strokeWidth={1.25} />
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="First Name"
+                          value={collectedPatientInfo.firstName}
+                          onChange={handleFirstNameChange}
+                          onBlur={() => setTouched(prev => ({ ...prev, firstName: true }))}
+                          className={cn(
+                            "w-full h-12 pl-10 pr-10 rounded-lg border-2 transition-all duration-200 text-base outline-none",
+                            validation.firstName 
+                              ? "border-green-500 bg-green-50/50" 
+                              : touched.firstName && collectedPatientInfo.firstName 
+                                ? "border-red-300" 
+                                : "border-gray-200 focus:border-primary"
+                          )}
+                          autoFocus
+                        />
+                        {validation.firstName && (
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
+                              <Check className="w-3 h-3 text-white" strokeWidth={2} />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Last Name */}
+                      <div className="relative">
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10">
+                          <User className="w-4 h-4 text-gray-400" strokeWidth={1.25} />
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Last Name"
+                          value={collectedPatientInfo.lastName}
+                          onChange={handleLastNameChange}
+                          onBlur={() => setTouched(prev => ({ ...prev, lastName: true }))}
+                          className={cn(
+                            "w-full h-12 pl-10 pr-10 rounded-lg border-2 transition-all duration-200 text-base outline-none",
+                            validation.lastName 
+                              ? "border-green-500 bg-green-50/50" 
+                              : touched.lastName && collectedPatientInfo.lastName 
+                                ? "border-red-300" 
+                                : "border-gray-200 focus:border-primary"
+                          )}
+                        />
+                        {validation.lastName && (
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
+                              <Check className="w-3 h-3 text-white" strokeWidth={2} />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={handlePatientFormSubmit}
+                      disabled={!validation.firstName || !validation.lastName}
+                      className={cn(
+                        "px-4 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center min-w-[80px] h-12",
+                        validation.firstName && validation.lastName
+                          ? "bg-primary hover:bg-primary/90 text-white shadow-sm"
+                          : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      )}
+                    >
+                      <svg
+                        className="w-5 h-5 rotate-90"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+
+                {patientInfoStep === 'email' && (
+                  <div className="flex items-end gap-3">
+                    <div className="flex-1 relative">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10">
+                        <Mail className="w-4 h-4 text-gray-400" strokeWidth={1.25} />
+                      </div>
+                      <input
+                        type="email"
+                        placeholder="Email Address"
+                        value={collectedPatientInfo.email}
+                        onChange={handleEmailChange}
+                        onBlur={() => setTouched(prev => ({ ...prev, email: true }))}
+                        className={cn(
+                          "w-full h-12 pl-10 pr-10 rounded-lg border-2 transition-all duration-200 text-base outline-none",
+                          validation.email 
+                            ? "border-green-500 bg-green-50/50" 
+                            : touched.email && collectedPatientInfo.email 
+                              ? "border-red-300" 
+                              : "border-gray-200 focus:border-primary"
+                        )}
+                        autoFocus
+                      />
+                      {validation.email && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
+                            <Check className="w-3 h-3 text-white" strokeWidth={2} />
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Email suggestions dropdown */}
+                      {showSuggestions && (
+                        <div className="absolute bottom-full mb-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-40 overflow-y-auto">
+                          {emailSuggestions.map((suggestion, index) => (
+                            <button
+                              key={index}
+                              type="button"
+                              onClick={() => selectEmailSuggestion(suggestion)}
+                              className="w-full px-3 py-2 text-left hover:bg-gray-50 text-sm"
+                            >
+                              {suggestion}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={handlePatientFormSubmit}
+                      disabled={!validation.email}
+                      className={cn(
+                        "px-4 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center min-w-[80px] h-12",
+                        validation.email
+                          ? "bg-primary hover:bg-primary/90 text-white shadow-sm"
+                          : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      )}
+                    >
+                      <svg
+                        className="w-5 h-5 rotate-90"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+
+                {patientInfoStep === 'mobile' && (
+                  <div className="flex items-end gap-3">
+                    <div className="flex-1 relative country-selector">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10">
+                        <button
+                          type="button"
+                          ref={countryButtonRef}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            setShowCountryDropdown(!showCountryDropdown)
+                          }}
+                          className="flex items-center gap-2 hover:bg-gray-50 rounded px-1 py-1 transition-colors"
+                        >
+                          <div className="w-5 h-3.5 rounded-sm overflow-hidden">
+                            <img 
+                              src={selectedCountry.data.image}
+                              alt={selectedCountry.data.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = "https://upload.wikimedia.org/wikipedia/en/thumb/4/41/Flag_of_India.svg/510px-Flag_of_India.svg.png"
+                              }}
+                            />
+                          </div>
+                          <span className="text-sm text-gray-600">
+                            {isDetectingCountry ? '...' : selectedCountry.data.phone[0]}
+                          </span>
+                          <ChevronDown className={cn(
+                            "w-3 h-3 text-gray-400 transition-transform duration-200",
+                            showCountryDropdown ? "rotate-180" : ""
+                          )} strokeWidth={1.25} />
+                        </button>
+                      </div>
+                      <input
+                        type="tel"
+                        placeholder="Mobile Number"
+                        value={collectedPatientInfo.mobile}
+                        onChange={handlePhoneChange}
+                        onBlur={() => setTouched(prev => ({ ...prev, mobile: true }))}
+                        className={cn(
+                          "w-full h-12 pl-24 pr-10 rounded-lg border-2 transition-all duration-200 text-base outline-none",
+                          validation.mobile 
+                            ? "border-green-500 bg-green-50/50" 
+                            : touched.mobile && collectedPatientInfo.mobile 
+                              ? "border-red-300" 
+                              : "border-gray-200 focus:border-primary"
+                        )}
+                        autoFocus
+                      />
+                      {validation.mobile && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
+                            <Check className="w-3 h-3 text-white" strokeWidth={2} />
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Country Dropdown - Always open upward */}
+                      {showCountryDropdown && (
+                        <div className="absolute bottom-full mb-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+                          {Object.entries(countryData as CountryData)
+                            .filter(([, country]) => country.phone && country.phone.length > 0)
+                            .sort((a, b) => a[1].name.localeCompare(b[1].name))
+                            .slice(0, 30) // Show top 30 countries
+                            .map(([code, country]) => (
+                              <button
+                                key={code}
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                  setSelectedCountry({ code, data: country })
+                                  setShowCountryDropdown(false)
+                                }}
+                                className="w-full px-3 py-2 text-left hover:bg-gray-50 flex items-center gap-3 transition-colors"
+                              >
+                                <div className="w-5 h-3.5 rounded-sm overflow-hidden">
+                                  <img 
+                                    src={country.image}
+                                    alt={country.name}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).src = "https://upload.wikimedia.org/wikipedia/en/thumb/4/41/Flag_of_India.svg/510px-Flag_of_India.svg.png"
+                                    }}
+                                  />
+                                </div>
+                                <span className="text-sm flex-1">{country.name}</span>
+                                <span className="text-sm text-gray-600">{country.phone[0]}</span>
+                              </button>
+                            ))
+                          }
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={handlePatientFormSubmit}
+                      disabled={!validation.mobile}
+                      className={cn(
+                        "px-4 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center min-w-[80px] h-12",
+                        validation.mobile
+                          ? "bg-primary hover:bg-primary/90 text-white shadow-sm"
+                          : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      )}
+                    >
+                      <svg
+                        className="w-5 h-5 rotate-90"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                )}
               </div>
-              <button
-                onClick={handleUserMessage}
-                disabled={!userInput.trim()}
-                className={`px-4 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center min-w-[60px] ${
-                  userInput.trim()
-                    ? 'bg-primary hover:bg-primary/90 text-white shadow-sm'
-                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                }`}
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+            ) : (
+              /* Regular Chat Input */
+              <div className="flex items-end gap-3">
+                <div className="flex-1">
+                  <textarea
+                    ref={chatInputRef}
+                    value={userInput}
+                    onChange={(e) => setUserInput(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Type your message here..."
+                    className="w-full p-3 border border-gray-300 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    rows={1}
+                    style={{ 
+                      minHeight: '44px',
+                      maxHeight: '120px',
+                      scrollbarWidth: 'thin'
+                    }}
+                    onInput={(e) => {
+                      const target = e.target as HTMLTextAreaElement
+                      target.style.height = 'auto'
+                      target.style.height = Math.min(target.scrollHeight, 120) + 'px'
+                    }}
                   />
-                </svg>
-              </button>
-            </div>
-            <div className="text-center mt-2">
-              <p className="text-xs text-gray-400">
-                Press Enter to send • Shift+Enter for new line
-              </p>
-            </div>
+                </div>
+                <button
+                  onClick={handleUserMessage}
+                  disabled={!userInput.trim()}
+                  className={`px-4 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center min-w-[60px] ${
+                    userInput.trim()
+                      ? 'bg-primary hover:bg-primary/90 text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                    />
+                  </svg>
+                </button>
+              </div>
+            )}
+            
+            {patientInfoStep === 'complete' && (
+              <div className="text-center mt-2">
+                <p className="text-xs text-gray-400">
+                  Press Enter to send • Shift+Enter for new line
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}

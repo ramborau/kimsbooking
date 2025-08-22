@@ -13,7 +13,7 @@ export const BookingConfirmationPopup: React.FC<BookingConfirmationPopupProps> =
   bookingData, 
   onClose 
 }) => {
-  const [countdown, setCountdown] = useState(10)
+  // Remove unused countdown state
   const [, setDataSent] = useState(false)
   const confirmationRef = useRef<HTMLDivElement>(null)
   const [bookingReference] = useState(() => Math.random().toString(36).substr(2, 9).toUpperCase())
@@ -27,7 +27,7 @@ export const BookingConfirmationPopup: React.FC<BookingConfirmationPopupProps> =
       try {
         // Get country code and mobile number
         const countryCode = bookingData?.patient?.selectedCountryCode?.replace('+', '') || '91'
-        const mobileNumber = bookingData?.patient?.phone || ''
+        const mobileNumber = bookingData?.patient?.mobile || ''
         const formattedPhone = `${countryCode}${mobileNumber}`
         
         // Create simple clean payload
@@ -83,34 +83,12 @@ export const BookingConfirmationPopup: React.FC<BookingConfirmationPopupProps> =
     sendWebhookData()
   }, [bookingData, isVisible, bookingReference])
 
-  useEffect(() => {
-    if (!isVisible) return
-
-    // Countdown timer
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer)
-          // Redirect to WhatsApp
-          try {
-            window.location.href = 'https://wa.me/919422594226'
-          } catch (error) {
-            // Fallback if direct redirect fails
-            window.open('https://wa.me/919422594226', '_self')
-          }
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
-
-    return () => clearInterval(timer)
-  }, [isVisible, onClose])
+  // Remove WhatsApp redirect functionality
 
   if (!isVisible) return null
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end justify-center">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div 
         ref={confirmationRef}
         className={cn(
@@ -229,7 +207,7 @@ export const BookingConfirmationPopup: React.FC<BookingConfirmationPopupProps> =
               <div className="flex justify-between">
                 <span className="text-xs text-gray-600">Phone</span>
                 <span className="text-xs font-medium text-gray-900">
-                  {bookingData.patient?.phone}
+                  {bookingData.patient?.selectedCountryCode} {bookingData.patient?.mobile}
                 </span>
               </div>
             </div>
@@ -245,9 +223,23 @@ export const BookingConfirmationPopup: React.FC<BookingConfirmationPopupProps> =
             </div>
           </div>
 
-          {/* Auto-redirect countdown */}
-          <div className="text-center text-xs text-gray-500">
-            Redirecting to WhatsApp in {countdown} seconds
+          {/* Action Buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-4 rounded-xl transition-colors duration-200"
+            >
+              Close
+            </button>
+            <button
+              onClick={() => {
+                // Optional: Add contact action here
+                window.open('https://wa.me/919422594226', '_blank')
+              }}
+              className="flex-1 bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-4 rounded-xl transition-colors duration-200"
+            >
+              Contact Hospital
+            </button>
           </div>
         </div>
       </div>
