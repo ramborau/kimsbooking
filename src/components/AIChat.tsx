@@ -1573,7 +1573,7 @@ Now, how would you like to proceed?`,
                         if (value.length >= 2) {
                           value = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase()
                         }
-                        setCachedUserInfo(prev => ({ ...prev, firstName: value }))
+                        setCachedUserInfo((prev: any) => ({ ...prev, firstName: value }))
                       }
                     }}
                     className="w-full h-12 pl-10 pr-10 rounded-lg border-2 border-green-500 bg-green-50/50 transition-all duration-200 text-base outline-none"
@@ -1599,7 +1599,7 @@ Now, how would you like to proceed?`,
                         if (value.length >= 2) {
                           value = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase()
                         }
-                        setCachedUserInfo(prev => ({ ...prev, lastName: value }))
+                        setCachedUserInfo((prev: any) => ({ ...prev, lastName: value }))
                       }
                     }}
                     className="w-full h-12 pl-10 pr-10 rounded-lg border-2 border-green-500 bg-green-50/50 transition-all duration-200 text-base outline-none"
@@ -1623,7 +1623,7 @@ Now, how would you like to proceed?`,
                   value={cachedUserInfo.email || ''}
                   onChange={(e) => {
                     const value = e.target.value.toLowerCase()
-                    setCachedUserInfo(prev => ({ ...prev, email: value }))
+                    setCachedUserInfo((prev: any) => ({ ...prev, email: value }))
                   }}
                   className="w-full h-12 pl-10 pr-10 rounded-lg border-2 border-green-500 bg-green-50/50 transition-all duration-200 text-base outline-none"
                 />
@@ -1653,7 +1653,7 @@ Now, how would you like to proceed?`,
                   onChange={(e) => {
                     const value = e.target.value.replace(/\D/g, '')
                     if (value.length <= 15) {
-                      setCachedUserInfo(prev => ({ ...prev, mobile: value }))
+                      setCachedUserInfo((prev: any) => ({ ...prev, mobile: value }))
                     }
                   }}
                   className="w-full h-12 pl-24 pr-10 rounded-lg border-2 border-green-500 bg-green-50/50 transition-all duration-200 text-base outline-none"
