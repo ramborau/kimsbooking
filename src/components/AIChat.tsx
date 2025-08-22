@@ -53,7 +53,6 @@ const TypingBubble: React.FC<TypingBubbleProps> = ({ isVisible }) => {
           <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
           <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '200ms' }}></div>
           <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '400ms' }}></div>
-          <span className="text-xs text-gray-500 ml-2 opacity-75">KIMS Bot is typing...</span>
         </div>
       </div>
     </div>
@@ -96,6 +95,33 @@ const FormattedText: React.FC<{ content: string }> = ({ content }) => {
   }
 
   return <>{parseText(content)}</>
+}
+
+// Component for letter-by-letter typing effect
+const TypewriterText: React.FC<{ content: string; onComplete?: () => void }> = ({ content, onComplete }) => {
+  const [displayText, setDisplayText] = useState('')
+  const [currentIndex, setCurrentIndex] = useState(0)
+
+  useEffect(() => {
+    if (currentIndex < content.length) {
+      const timeout = setTimeout(() => {
+        setDisplayText(prev => prev + content[currentIndex])
+        setCurrentIndex(prev => prev + 1)
+      }, 30) // Adjust speed here (30ms per character)
+
+      return () => clearTimeout(timeout)
+    } else if (onComplete) {
+      onComplete()
+    }
+  }, [currentIndex, content, onComplete])
+
+  // Reset when content changes
+  useEffect(() => {
+    setDisplayText('')
+    setCurrentIndex(0)
+  }, [content])
+
+  return <FormattedText content={displayText} />
 }
 
 export const AIChat: React.FC = () => {
@@ -146,6 +172,7 @@ export const AIChat: React.FC = () => {
   const [userHasReplied, setUserHasReplied] = useState(false)
   const [showCachePopup, setShowCachePopup] = useState(false)
   const [cachedUserInfo, setCachedUserInfo] = useState<any>(null)
+  const [typingMessageId, setTypingMessageId] = useState<string | null>(null)
 
   const {
     bookingData,
@@ -203,6 +230,7 @@ export const AIChat: React.FC = () => {
       
       setMessages(prev => [...prev, newMessage])
       setIsTyping(false)
+      setTypingMessageId(newMessage.id)
       playNotificationSound()
     }, delay)
   }
@@ -649,6 +677,21 @@ export const AIChat: React.FC = () => {
     }
   }, [showCountryDropdown])
 
+  // Lock body scroll when popups are open
+  useEffect(() => {
+    const isAnyPopupOpen = showCallPopup || showCachePopup || showDepartmentModal || showLocationModal || showDateModal || showPatientModal
+    
+    if (isAnyPopupOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
+    }
+    
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [showCallPopup, showCachePopup, showDepartmentModal, showLocationModal, showDateModal, showPatientModal])
+
   // Initialize chat with welcome message and patient info collection
   useEffect(() => {
     let timeoutId1: NodeJS.Timeout
@@ -850,7 +893,7 @@ Now, **how would you like to proceed?** 🚀`,
             <button
               onClick={() => {
                 // Add user message for button selection
-                addUserMessage("✅ Yes, book this appointment with Dr. Sarah Johnson")
+                addUserMessage("Yes, book this appointment with Dr. Sarah Johnson")
                 
                 // Set the appointment details
                 setDoctor({ id: 1, name: 'Dr. Sarah Johnson', qualification: 'DDS, Oral Surgery' })
@@ -867,23 +910,25 @@ Now, **how would you like to proceed?** 🚀`,
                   }, 1800)
                 }, 800)
               }}
-              className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200"
+              className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
             >
-              ✅ Book This Appointment
+              <Check className="w-5 h-5" strokeWidth={1.5} />
+              Book This Appointment
             </button>
             <button
               onClick={() => {
                 // Add user message for button selection
-                addUserMessage("🔍 Let me see other options")
+                addUserMessage("Let me see other options")
                 
                 addBotMessage("No problem! Let me show you all available options:", undefined, 800)
                 setTimeout(() => {
                   setShowDepartmentModal(true)
                 }, 1500)
               }}
-              className="w-full bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200"
+              className="w-full bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
             >
-              🔍 See Other Options
+              <RefreshCw className="w-4 h-4" strokeWidth={1.5} />
+              See Other Options
             </button>
           </div>, 1400
         )
@@ -1044,18 +1089,19 @@ Now, **how would you like to proceed?** 🚀`,
                 <div className="max-w-[80%] min-w-0">
                   <div className="bg-white rounded-2xl rounded-bl-md px-4 py-3 shadow-sm border">
                     <p className="text-gray-800 leading-relaxed">
-                      <FormattedText content={message.content} />
+                      {typingMessageId === message.id ? (
+                        <TypewriterText 
+                          content={message.content} 
+                          onComplete={() => setTypingMessageId(null)}
+                        />
+                      ) : (
+                        <FormattedText content={message.content} />
+                      )}
                     </p>
                   </div>
                   {message.component && (
                     <div className="mt-3 rounded-2xl overflow-hidden" style={{backgroundColor: 'transparent', boxShadow: 'none', border: 'none'}}>
-                      {/* Check if component has buttons and disable them if user has replied */}
-                      {userHasReplied && React.isValidElement(message.component) ? 
-                        React.cloneElement(message.component as React.ReactElement, {
-                          style: { pointerEvents: 'none', opacity: 0.6 }
-                        }) : 
-                        message.component
-                      }
+                      {message.component}
                     </div>
                   )}
                   <div className="mt-1 ml-1">
@@ -1116,7 +1162,7 @@ Now, **how would you like to proceed?** 🚀`,
       />
 
       {/* Fixed Bottom Chat Input */}
-      {showChatInput && (
+      {showChatInput && !isTyping && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-10">
           <div className="max-w-4xl mx-auto">
             {/* Patient Info Collection Inputs */}
@@ -1506,8 +1552,8 @@ Now, **how would you like to proceed?** 🚀`,
 
       {/* Call Popup */}
       {showCallPopup && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 my-8">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Call Options</h3>
               <button
@@ -1563,8 +1609,8 @@ Now, **how would you like to proceed?** 🚀`,
 
       {/* Cached User Info Popup */}
       {showCachePopup && cachedUserInfo && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 my-8 max-h-full overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-lg font-semibold text-gray-900">Welcome Back!</h3>
               <button
