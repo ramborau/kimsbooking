@@ -111,6 +111,18 @@ export const AIChat: React.FC = () => {
     }, delay)
   }
 
+  // Add a user message immediately (no typing animation)
+  const addUserMessage = (content: string) => {
+    const newMessage: Message = {
+      id: Date.now().toString(),
+      type: 'user',
+      content,
+      timestamp: new Date()
+    }
+    
+    setMessages(prev => [...prev, newMessage])
+  }
+
   // Initialize chat with welcome message
   useEffect(() => {
     let timeoutId1: NodeJS.Timeout
@@ -156,6 +168,10 @@ export const AIChat: React.FC = () => {
 
   const handleStartBooking = () => {
     setChatMode('booking')
+    
+    // Add user message for button selection
+    addUserMessage("📅 Book An Appointment")
+    
     addBotMessage("Great! First, please select the medical department you need:", undefined, 1200)
     setTimeout(() => {
       setShowDepartmentModal(true)
@@ -164,6 +180,10 @@ export const AIChat: React.FC = () => {
 
   const handleChatMode = () => {
     setChatMode('chat')
+    
+    // Add user message for button selection
+    addUserMessage("💬 Chat with Bot")
+    
     addBotMessage("I'm here to help! Please tell me what you need assistance with. For example, you can say 'I need to see a dentist at the earliest' or 'I want to book a cardiology appointment'.", undefined, 1800)
     // Add input field component with delay
     setTimeout(() => {
@@ -228,6 +248,9 @@ export const AIChat: React.FC = () => {
             </div>
             <button
               onClick={() => {
+                // Add user message for button selection
+                addUserMessage("✅ Yes, book this appointment with Dr. Sarah Johnson")
+                
                 // Set the appointment details
                 setDoctor({ id: 1, name: 'Dr. Sarah Johnson', qualification: 'DDS, Oral Surgery' })
                 setTimeSlot('10:00 AM')
@@ -248,6 +271,9 @@ export const AIChat: React.FC = () => {
             </button>
             <button
               onClick={() => {
+                // Add user message for button selection
+                addUserMessage("🔍 Let me see other options")
+                
                 addBotMessage("No problem! Let me show you all available options:", undefined, 800)
                 setTimeout(() => {
                   setShowDepartmentModal(true)
@@ -276,6 +302,10 @@ export const AIChat: React.FC = () => {
   const handleDepartmentSelected = (department: any) => {
     setDepartment(department)
     setShowDepartmentModal(false)
+    
+    // Add user message showing their selection
+    addUserMessage(`I selected ${department.name}`)
+    
     addBotMessage(`Excellent choice! ${department.name} is one of our specialized departments with experienced doctors.`, undefined, 1400)
     setTimeout(() => {
       addBotMessage("Now, let's find the most convenient location for you:", undefined, 1000)
@@ -288,6 +318,10 @@ export const AIChat: React.FC = () => {
   const handleLocationSelected = (location: any) => {
     setLocation(location)
     setShowLocationModal(false)
+    
+    // Add user message showing their selection
+    addUserMessage(`I chose ${location.name}`)
+    
     addBotMessage(`Perfect! ${location.name} is a great choice.`, undefined, 1100)
     setTimeout(() => {
       addBotMessage("Now, please select your preferred date and time for the appointment:", undefined, 1200)
@@ -307,6 +341,9 @@ export const AIChat: React.FC = () => {
       weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' 
     })
     
+    // Add user message showing their selection
+    addUserMessage(`I booked with ${doctor.name} on ${dateStr} at ${timeSlot}`)
+    
     addBotMessage(`Wonderful! You've selected an appointment with ${doctor.name} on ${dateStr} at ${timeSlot}.`, undefined, 1500)
     setTimeout(() => {
       addBotMessage("Now I need some basic information to complete your booking:", undefined, 1100)
@@ -319,6 +356,10 @@ export const AIChat: React.FC = () => {
   const handlePatientInfoSubmitted = (patientData: any) => {
     setPatient(patientData)
     setShowPatientModal(false)
+    
+    // Add user message showing their information submission
+    addUserMessage(`My details: ${patientData.firstName} ${patientData.lastName}, ${patientData.email}, ${patientData.mobile}`)
+    
     addBotMessage(`Thank you, ${patientData.firstName}! I have all the information needed.`, undefined, 1200)
     setTimeout(() => {
       addBotMessage("Let me confirm your appointment details and process your booking...", undefined, 1400)
@@ -337,8 +378,11 @@ export const AIChat: React.FC = () => {
           addBotMessage("Is there anything else I can help you with today?", 
           <button
             onClick={() => {
+              // Add user message for restart button
+              addUserMessage("🔄 Book Another Appointment")
+              
+              // Clear only booking data, keep messages with user selection
               resetBooking()
-              setMessages([])
               setIsInitialized(false)
               // Restart the chat flow
               setTimeout(() => {
