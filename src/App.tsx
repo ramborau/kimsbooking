@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import BookingFlow from '@/components/BookingFlow'
 import { WhatsAppRequired } from '@/components/WhatsAppRequired'
 import { shouldShowBookingApp } from '@/utils/userAgentDetection'

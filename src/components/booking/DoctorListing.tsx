@@ -117,7 +117,6 @@ export const DoctorListing: React.FC<DoctorListingProps> = ({ onDoctorSelect, on
   ]
 
   const generateTimeSlots = (period: 'morning' | 'afternoon' | 'evening', count: number, selectedDate?: Date) => {
-    const slots: string[] = []
     const startHour = period === 'morning' ? 9 : period === 'afternoon' ? 14 : 18
     const endHour = period === 'morning' ? 12 : period === 'afternoon' ? 17 : 21
     const now = new Date()
