@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { User, Mail, Check, ChevronDown, Calendar, MessageCircle, CheckCircle, MapPin, Clock } from 'lucide-react'
+import { User, Mail, Check, ChevronDown, Calendar, MessageCircle, CheckCircle, MapPin, Clock, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useBookingStore } from '@/store/bookingStore'
 import { DepartmentModal } from '@/components/chat/DepartmentModal'
@@ -306,9 +306,10 @@ export const AIChat: React.FC = () => {
               }, 2000)
             }, 500)
           }}
-          className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
+          className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
         >
-          🔄 Book Another Appointment
+          <RefreshCw className="w-5 h-5" strokeWidth={1.5} />
+          Book Another Appointment
         </button>
       </div>
     )
@@ -868,8 +869,8 @@ Now, how would you like to proceed?`,
               </div>
             ) : (
               <div className="flex items-start gap-3 mb-4 flex-row-reverse">
-                <div className="w-10 h-10 rounded-full bg-white border border-primary flex items-center justify-center flex-shrink-0">
-                  <img src="/user.png" alt="User" className="w-8 h-8 rounded-full object-cover" />
+                <div className="w-10 h-10 flex-shrink-0">
+                  <img src="/user.png" alt="User" className="w-10 h-10 rounded-full object-cover" />
                 </div>
                 <div className="max-w-[80%]">
                   <div className="rounded-2xl rounded-br-md px-4 py-3 shadow-sm" style={{backgroundColor: '#ffeeee'}}>
