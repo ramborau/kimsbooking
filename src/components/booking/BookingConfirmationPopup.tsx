@@ -14,7 +14,7 @@ export const BookingConfirmationPopup: React.FC<BookingConfirmationPopupProps> =
   onClose 
 }) => {
   const [countdown, setCountdown] = useState(10)
-  const [dataSent, setDataSent] = useState(false)
+  const [, setDataSent] = useState(false)
   const confirmationRef = useRef<HTMLDivElement>(null)
   const [bookingReference] = useState(() => Math.random().toString(36).substr(2, 9).toUpperCase())
 

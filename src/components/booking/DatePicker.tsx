@@ -77,9 +77,6 @@ export const DatePicker: React.FC<DatePickerProps> = ({ onSelect, selected, popu
     return dates
   }
   
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
-  }
   
   const formatMonthYear = (date: Date) => {
     return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
@@ -149,7 +146,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ onSelect, selected, popu
   ]
 
   const generateTimeSlotsForDate = (period: 'morning' | 'afternoon' | 'evening', count: number, dateToCheck: Date) => {
-    const slots = []
+    const slots: string[] = []
     const startHour = period === 'morning' ? 9 : period === 'afternoon' ? 14 : 18
     const endHour = period === 'morning' ? 12 : period === 'afternoon' ? 17 : 21
     const now = new Date()

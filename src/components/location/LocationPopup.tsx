@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { MapPin, Navigation, X } from 'lucide-react'
+import { MapPin, Navigation } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface LocationPopupProps {

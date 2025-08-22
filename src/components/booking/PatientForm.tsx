@@ -212,7 +212,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSubmit, initialData 
     detectCountry()
   }, [])
 
-  const isFormValid = validation.firstName && validation.lastName && validation.email && validation.phone
+  // const isFormValid = validation.firstName && validation.lastName && validation.email && validation.phone
   
   // Close country dropdown when clicking outside
   useEffect(() => {

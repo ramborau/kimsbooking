@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { MapPin, Navigation, AlertCircle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
 
 interface LocationPermissionProps {
   onLocationGranted: (location: { lat: number; lng: number }) => void

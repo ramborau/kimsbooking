@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { MapPin, Clock, Phone, Navigation, Loader2, Car, Waypoints, Calendar, Users } from 'lucide-react'
+import { MapPin, Clock, Loader2, Car, Calendar } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { calculateDistances, type Hospital, type UserLocation } from '@/services/locationService'
 
@@ -49,7 +49,7 @@ export const LocationSelect: React.FC<LocationSelectProps> = ({ onSelect, select
       )}
       
       <div className="space-y-4">
-        {locations.filter(location => location.available).map((location, index) => {
+        {locations.filter(location => location.available).map((location) => {
           const isSelected = selected === location.id
           const distance = (location as any).distance
           

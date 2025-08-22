@@ -1,7 +1,7 @@
-import React, { useState, useMemo } from 'react'
+import React, { useMemo } from 'react'
 import { 
   Heart, Brain, Bone, Eye, Baby, Stethoscope, Activity, Pill, MapPin, Users, Search,
-  Zap, Scissors, Microscope, Waves, Shield, Car, Moon, Flame, Droplets, Wind
+  Zap, Scissors, Microscope, Waves, Shield, Moon, Flame, Droplets, Wind
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'

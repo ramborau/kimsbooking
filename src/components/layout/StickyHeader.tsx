@@ -23,11 +23,9 @@ interface StickyHeaderProps {
 
 export const StickyHeader: React.FC<StickyHeaderProps> = ({
   title,
-  step,
   onBack,
   showBack = true,
   showSearch = false,
-  onSearchClick,
   currentStep = 1,
   totalSteps = 7,
   searchQuery = '',

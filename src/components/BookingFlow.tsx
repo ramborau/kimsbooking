@@ -7,8 +7,6 @@ import { DateSelectionPopup } from '@/components/date/DateSelectionPopup'
 import { DepartmentSelect } from '@/components/booking/DepartmentSelect'
 import { LocationSelect } from '@/components/booking/LocationSelect'
 import { DatePicker } from '@/components/booking/DatePicker'
-import { DoctorGrid } from '@/components/booking/DoctorGrid'
-import { TimeSlotPicker } from '@/components/booking/TimeSlotPicker'
 import { PatientForm } from '@/components/booking/PatientForm'
 import { BookingConfirmationPopup } from '@/components/booking/BookingConfirmationPopup'
 import { Button } from '@/components/ui/button'
@@ -32,7 +30,6 @@ const BookingFlow: React.FC = () => {
     userLocation,
     locationPermissionAsked,
     bookingData,
-    setCurrentStep,
     nextStep,
     prevStep,
     setUserLocation,
@@ -66,7 +63,7 @@ const BookingFlow: React.FC = () => {
     // Force reset location permission state to ensure popup shows on page 1
     console.log('Resetting location permission state...')
     setLocationPermissionAsked(false)
-    setUserLocation(null)
+    setUserLocation(null as any)
   }, [])
 
   const getStepTitle = (step: number) => {

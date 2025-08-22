@@ -1,15 +1,14 @@
 import React, { useEffect, useState } from 'react'
 import { Calendar, Clock, MapPin, CheckCircle } from 'lucide-react'
-import { cn } from '@/lib/utils'
 
 interface BookingConfirmationProps {
   bookingData: any
   onDone: () => void
 }
 
-export const BookingConfirmation: React.FC<BookingConfirmationProps> = ({ bookingData, onDone }) => {
+export const BookingConfirmation: React.FC<BookingConfirmationProps> = ({ bookingData }) => {
   const [countdown, setCountdown] = useState(10)
-  const [dataSent, setDataSent] = useState(false)
+  const [, setDataSent] = useState(false)
 
   useEffect(() => {
     // Send data to webhook

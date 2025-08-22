@@ -22,17 +22,14 @@ interface DoctorListingProps {
   selectedDate?: Date | null
 }
 
-interface DoctorListingInternalProps extends DoctorListingProps {
-  selectedDoctorId?: number | null
-}
 
-export const DoctorListing: React.FC<DoctorListingProps> = ({ onDoctorSelect, selectedDoctor, onSlotSelect, selectedDate }) => {
+export const DoctorListing: React.FC<DoctorListingProps> = ({ onDoctorSelect, onSlotSelect, selectedDate }) => {
   const [doctorTabs, setDoctorTabs] = useState<Record<number, 'morning' | 'afternoon' | 'evening'>>({})
   const [selectedDoctorId, setSelectedDoctorId] = useState<number | null>(null)
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null)
 
   // Helper function to get active tab for a doctor
-  const getActiveTab = (doctorId: number) => doctorTabs[doctorId] || getFirstAvailableTab(doctors.find(d => d.id === doctorId)!, selectedDate)
+  const getActiveTab = (doctorId: number) => doctorTabs[doctorId] || getFirstAvailableTab(doctors.find(d => d.id === doctorId)!, selectedDate || undefined)
 
   // Helper function to set active tab for a doctor
   const setActiveTabForDoctor = (doctorId: number, tab: 'morning' | 'afternoon' | 'evening') => {
@@ -112,11 +109,6 @@ export const DoctorListing: React.FC<DoctorListingProps> = ({ onDoctorSelect, se
     return 'bg-green-500'
   }
 
-  const getAvailabilityText = (slots: number) => {
-    if (slots === 0) return 'No slots'
-    if (slots <= 2) return 'Few slots'
-    return 'Available'
-  }
 
   const tabs = [
     { id: 'morning', label: 'Morning', icon: Sun },
@@ -125,7 +117,7 @@ export const DoctorListing: React.FC<DoctorListingProps> = ({ onDoctorSelect, se
   ]
 
   const generateTimeSlots = (period: 'morning' | 'afternoon' | 'evening', count: number, selectedDate?: Date) => {
-    const slots = []
+    const slots: string[] = []
     const startHour = period === 'morning' ? 9 : period === 'afternoon' ? 14 : 18
     const endHour = period === 'morning' ? 12 : period === 'afternoon' ? 17 : 21
     const now = new Date()
@@ -241,7 +233,7 @@ export const DoctorListing: React.FC<DoctorListingProps> = ({ onDoctorSelect, se
             <div className="w-full flex" style={{ padding: "0px 10px", borderRadius: 0 }}>
               {tabs.map((tab, tabIndex) => {
                 const TabIcon = tab.icon
-                const availableSlots = getAvailableSlotsForPeriod(doctor, tab.id as 'morning' | 'afternoon' | 'evening', selectedDate)
+                const availableSlots = getAvailableSlotsForPeriod(doctor, tab.id as 'morning' | 'afternoon' | 'evening', selectedDate || undefined)
                 const isActiveForThisDoctor = getActiveTab(doctor.id) === tab.id
                 const isDisabled = availableSlots === 0
                 const isFirst = tabIndex === 0
@@ -282,7 +274,7 @@ export const DoctorListing: React.FC<DoctorListingProps> = ({ onDoctorSelect, se
             <div className="space-y-2">
               {(() => {
                 const currentActiveTab = getActiveTab(doctor.id)
-                const availableSlots = generateTimeSlots(currentActiveTab, doctor.slots[currentActiveTab], selectedDate)
+                const availableSlots = generateTimeSlots(currentActiveTab, doctor.slots[currentActiveTab], selectedDate || undefined)
                 return availableSlots.length > 0 ? (
                   <div className="grid grid-cols-3 gap-2" style={{ padding: "10px" }}>
                     {availableSlots.map((time, index) => (
