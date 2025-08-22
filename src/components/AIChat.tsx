@@ -817,7 +817,7 @@ Now, how would you like to proceed?`,
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col" style={{backgroundImage: 'url(https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png)', backgroundRepeat: 'repeat', backgroundSize: '200px 200px'}}>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col" style={{backgroundImage: 'url(https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png)', backgroundRepeat: 'repeat', backgroundSize: 'auto'}}>
       {/* Header */}
       <div className="bg-white shadow-sm border-b px-4 py-4">
         <div className="flex items-center gap-3">
@@ -825,7 +825,10 @@ Now, how would you like to proceed?`,
             <img src="/kimsbot.png" alt="KIMS Bot" className="w-10 h-10 rounded-full object-cover" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">KIMS Assistant</h1>
+            <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              KIMS Assistant
+              <img src="https://static.whatsapp.net/rsrc.php/v4/yM/r/SGDtYg_EYce.png" alt="WhatsApp" className="w-5 h-5" />
+            </h1>
             <p className="text-sm text-gray-500">AI-Powered Appointment Booking</p>
           </div>
         </div>
