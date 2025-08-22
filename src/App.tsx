@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
 import BookingFlow from '@/components/BookingFlow'
 import { WhatsAppRequired } from '@/components/WhatsAppRequired'
+import { AIChat } from '@/components/AIChat'
 import { shouldShowBookingApp } from '@/utils/userAgentDetection'
 import './App.css'
 
-function App() {
+function MainApp() {
   const [showBookingApp, setShowBookingApp] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const location = useLocation()
 
   useEffect(() => {
     // Check if user should see the booking app
@@ -18,6 +21,11 @@ function App() {
     console.log('User Agent:', navigator.userAgent)
     console.log('Should show booking app:', shouldShow)
   }, [])
+
+  // AI Chat route bypasses WhatsApp check
+  if (location.pathname === '/aichat') {
+    return <AIChat />
+  }
 
   if (isLoading) {
     return (
@@ -34,6 +42,17 @@ function App() {
     <div className="App">
       {showBookingApp ? <BookingFlow /> : <WhatsAppRequired />}
     </div>
+  )
+}
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/aichat" element={<AIChat />} />
+        <Route path="/*" element={<MainApp />} />
+      </Routes>
+    </Router>
   )
 }
 
