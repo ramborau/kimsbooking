@@ -105,6 +105,8 @@ export const AIChat: React.FC = () => {
   const [showToast, setShowToast] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
   const [userHasReplied, setUserHasReplied] = useState(false)
+  const [showCachePopup, setShowCachePopup] = useState(false)
+  const [cachedUserInfo, setCachedUserInfo] = useState<any>(null)
 
   const {
     bookingData,
@@ -201,8 +203,16 @@ export const AIChat: React.FC = () => {
     const cached = localStorage.getItem('kimsUserInfo')
     if (cached) {
       const userInfo = JSON.parse(cached)
-      setCollectedPatientInfo(userInfo)
+      // Check if we have all required fields
+      if (userInfo.firstName && userInfo.lastName && userInfo.email && userInfo.mobile) {
+        setCachedUserInfo(userInfo)
+        setShowCachePopup(true)
+        return true
+      } else {
+        setCollectedPatientInfo(userInfo)
+      }
     }
+    return false
   }
 
   // Clear cache and restart chat
@@ -607,27 +617,34 @@ export const AIChat: React.FC = () => {
     let timeoutId3: NodeJS.Timeout
 
     if (!isInitialized && messages.length === 0) {
-      // Load cached user info if available
-      loadUserInfoFromCache()
-      timeoutId1 = setTimeout(() => {
-        addBotMessage("Hello! Welcome to KIMS Hospital. I'm here to help you book your appointment quickly and easily.", undefined, 1000)
-        
-        timeoutId2 = setTimeout(() => {
-          addBotMessage("First, let me get your basic information to serve you better. Please provide your name:", undefined, 1800)
-          
-          setTimeout(() => {
-            setPatientInfoStep('name')
-            setShowChatInput(true)
-            setTimeout(() => {
-              chatInputRef.current?.focus()
-            }, 100)
-          }, 3200)
-        }, 2000)
-      }, 500)
+      // Load cached user info if available - if cache exists with complete info, show popup
+      const hasCachedInfo = loadUserInfoFromCache()
       
-      timeoutId3 = setTimeout(() => {
+      // Only start normal flow if no cached info
+      if (!hasCachedInfo) {
+        timeoutId1 = setTimeout(() => {
+          addBotMessage("Hello! Welcome to KIMS Hospital. I'm here to help you book your appointment quickly and easily.", undefined, 1000)
+          
+          timeoutId2 = setTimeout(() => {
+            addBotMessage("First, let me get your basic information to serve you better. Please provide your name:", undefined, 1800)
+            
+            setTimeout(() => {
+              setPatientInfoStep('name')
+              setShowChatInput(true)
+              setTimeout(() => {
+                chatInputRef.current?.focus()
+              }, 100)
+            }, 3200)
+          }, 2000)
+        }, 500)
+        
+        timeoutId3 = setTimeout(() => {
+          setIsInitialized(true)
+        }, 5000)
+      } else {
+        // If we have cached info, set as initialized immediately
         setIsInitialized(true)
-      }, 5000)
+      }
     }
 
     return () => {
@@ -1499,6 +1516,221 @@ Now, how would you like to proceed?`,
         <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 z-50 animate-in slide-in-from-bottom-2 duration-300">
           <div className="bg-gray-800 text-white px-6 py-3 rounded-full shadow-lg">
             {toastMessage}
+          </div>
+        </div>
+      )}
+
+      {/* Cached User Info Popup */}
+      {showCachePopup && cachedUserInfo && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-semibold text-gray-900">Welcome Back!</h3>
+              <button
+                onClick={() => {
+                  setShowCachePopup(false)
+                  setCachedUserInfo(null)
+                  // Start normal flow
+                  setTimeout(() => {
+                    addBotMessage("Hello! Welcome to KIMS Hospital. I'm here to help you book your appointment quickly and easily.", undefined, 1000)
+                    setTimeout(() => {
+                      addBotMessage("First, let me get your basic information to serve you better. Please provide your name:", undefined, 1800)
+                      setTimeout(() => {
+                        setPatientInfoStep('name')
+                        setShowChatInput(true)
+                        setTimeout(() => {
+                          chatInputRef.current?.focus()
+                        }, 100)
+                      }, 3200)
+                    }, 2000)
+                  }, 500)
+                }}
+                className="p-1 hover:bg-gray-100 rounded-full"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <p className="text-gray-600 mb-4">
+              We found your information from a previous visit. You can edit it or proceed with the saved details.
+            </p>
+
+            {/* Form with pre-filled values */}
+            <div className="space-y-4">
+              {/* First Name & Last Name */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10">
+                    <User className="w-4 h-4 text-gray-400" strokeWidth={1.25} />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="First Name"
+                    value={cachedUserInfo.firstName || ''}
+                    onChange={(e) => {
+                      let value = e.target.value
+                      if (/^[a-zA-Z\s]*$/.test(value)) {
+                        if (value.length >= 2) {
+                          value = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase()
+                        }
+                        setCachedUserInfo(prev => ({ ...prev, firstName: value }))
+                      }
+                    }}
+                    className="w-full h-12 pl-10 pr-10 rounded-lg border-2 border-green-500 bg-green-50/50 transition-all duration-200 text-base outline-none"
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
+                      <Check className="w-3 h-3 text-white" strokeWidth={2} />
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10">
+                    <User className="w-4 h-4 text-gray-400" strokeWidth={1.25} />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Last Name"
+                    value={cachedUserInfo.lastName || ''}
+                    onChange={(e) => {
+                      let value = e.target.value
+                      if (/^[a-zA-Z\s]*$/.test(value)) {
+                        if (value.length >= 2) {
+                          value = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase()
+                        }
+                        setCachedUserInfo(prev => ({ ...prev, lastName: value }))
+                      }
+                    }}
+                    className="w-full h-12 pl-10 pr-10 rounded-lg border-2 border-green-500 bg-green-50/50 transition-all duration-200 text-base outline-none"
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
+                      <Check className="w-3 h-3 text-white" strokeWidth={2} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Email */}
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10">
+                  <Mail className="w-4 h-4 text-gray-400" strokeWidth={1.25} />
+                </div>
+                <input
+                  type="email"
+                  placeholder="Email Address"
+                  value={cachedUserInfo.email || ''}
+                  onChange={(e) => {
+                    const value = e.target.value.toLowerCase()
+                    setCachedUserInfo(prev => ({ ...prev, email: value }))
+                  }}
+                  className="w-full h-12 pl-10 pr-10 rounded-lg border-2 border-green-500 bg-green-50/50 transition-all duration-200 text-base outline-none"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
+                    <Check className="w-3 h-3 text-white" strokeWidth={2} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Mobile Number */}
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 flex items-center gap-2">
+                  <div className="w-5 h-3.5 rounded-sm overflow-hidden">
+                    <img 
+                      src={selectedCountry.data.image}
+                      alt={selectedCountry.data.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <span className="text-sm text-gray-600">{selectedCountry.data.phone[0]}</span>
+                </div>
+                <input
+                  type="tel"
+                  placeholder="Mobile Number"
+                  value={cachedUserInfo.mobile || ''}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '')
+                    if (value.length <= 15) {
+                      setCachedUserInfo(prev => ({ ...prev, mobile: value }))
+                    }
+                  }}
+                  className="w-full h-12 pl-24 pr-10 rounded-lg border-2 border-green-500 bg-green-50/50 transition-all duration-200 text-base outline-none"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
+                    <Check className="w-3 h-3 text-white" strokeWidth={2} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowCachePopup(false)
+                  setCachedUserInfo(null)
+                  // Start normal flow
+                  setTimeout(() => {
+                    addBotMessage("Hello! Welcome to KIMS Hospital. I'm here to help you book your appointment quickly and easily.", undefined, 1000)
+                    setTimeout(() => {
+                      addBotMessage("First, let me get your basic information to serve you better. Please provide your name:", undefined, 1800)
+                      setTimeout(() => {
+                        setPatientInfoStep('name')
+                        setShowChatInput(true)
+                        setTimeout(() => {
+                          chatInputRef.current?.focus()
+                        }, 100)
+                      }, 3200)
+                    }, 2000)
+                  }, 500)
+                }}
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-4 rounded-xl transition-colors duration-200"
+              >
+                Start Fresh
+              </button>
+              
+              <button
+                onClick={() => {
+                  // Use cached info and proceed to bot flow
+                  setCollectedPatientInfo(cachedUserInfo)
+                  setPatientInfoStep('complete')
+                  setPatient({
+                    ...cachedUserInfo,
+                    selectedCountryCode: selectedCountry.data.phone[0]
+                  })
+                  setShowCachePopup(false)
+                  
+                  // Add welcome message and go straight to booking flow
+                  addBotMessage(`Welcome back, ${cachedUserInfo.firstName}! I have your information ready.`, undefined, 800)
+                  
+                  setTimeout(() => {
+                    addBotMessage("How would you like to proceed today?", 
+                      <div className="space-y-3">
+                        <button
+                          onClick={handleStartBooking}
+                          className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
+                        >
+                          <Calendar className="w-5 h-5" strokeWidth={1.25} />
+                          Book An Appointment
+                        </button>
+                        <button
+                          onClick={handleChatMode}
+                          className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
+                        >
+                          <MessageCircle className="w-5 h-5" strokeWidth={1.25} />
+                          Chat with Bot
+                        </button>
+                      </div>, 1500)
+                  }, 1200)
+                }}
+                className="flex-1 bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-4 rounded-xl transition-colors duration-200"
+              >
+                Continue
+              </button>
+            </div>
           </div>
         </div>
       )}
