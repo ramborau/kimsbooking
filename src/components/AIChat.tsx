@@ -829,7 +829,19 @@ Now, how would you like to proceed?`,
               KIMS Assistant
               <img src="https://static.whatsapp.net/rsrc.php/v4/yM/r/SGDtYg_EYce.png" alt="WhatsApp" className="w-5 h-5" />
             </h1>
-            <p className="text-sm text-gray-500">AI-Powered Appointment Booking</p>
+            <a 
+              href="https://botpe.in" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              <span>Powered By</span>
+              <img 
+                src="https://botpe.in/wp-content/uploads/2023/01/BotPe-Logo-2024.png" 
+                alt="BotPe" 
+                className="h-5 object-contain"
+              />
+            </a>
           </div>
         </div>
       </div>
