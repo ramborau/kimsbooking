@@ -817,7 +817,6 @@ export const AIChat: React.FC = () => {
   // Initialize chat with welcome message and patient info collection
   useEffect(() => {
     let timeoutId1: NodeJS.Timeout
-    let timeoutId2: NodeJS.Timeout
     let timeoutId3: NodeJS.Timeout
 
     if (!isInitialized && messages.length === 0) {
@@ -848,7 +847,6 @@ export const AIChat: React.FC = () => {
 
     return () => {
       if (timeoutId1) clearTimeout(timeoutId1)
-      if (timeoutId2) clearTimeout(timeoutId2)
       if (timeoutId3) clearTimeout(timeoutId3)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
