@@ -97,31 +97,43 @@ const FormattedText: React.FC<{ content: string }> = ({ content }) => {
   return <>{parseText(content)}</>
 }
 
-// Component for letter-by-letter typing effect
+// Component for word-by-word typing effect
 const TypewriterText: React.FC<{ content: string; onComplete?: () => void }> = ({ content, onComplete }) => {
   const [displayText, setDisplayText] = useState('')
-  const [currentIndex, setCurrentIndex] = useState(0)
+  const [currentWordIndex, setCurrentWordIndex] = useState(0)
+
+  const words = content.split(' ')
 
   useEffect(() => {
-    if (currentIndex < content.length) {
+    if (currentWordIndex < words.length) {
       const timeout = setTimeout(() => {
-        setDisplayText(prev => prev + content[currentIndex])
-        setCurrentIndex(prev => prev + 1)
-      }, 30) // Adjust speed here (30ms per character)
+        setDisplayText(prev => {
+          const nextWord = words[currentWordIndex]
+          return prev + (prev ? ' ' : '') + nextWord
+        })
+        setCurrentWordIndex(prev => prev + 1)
+      }, 120) // 120ms per word for quicker animation
 
       return () => clearTimeout(timeout)
     } else if (onComplete) {
-      onComplete()
+      setTimeout(onComplete, 300) // Small delay after completion
     }
-  }, [currentIndex, content, onComplete])
+  }, [currentWordIndex, words, onComplete])
 
   // Reset when content changes
   useEffect(() => {
     setDisplayText('')
-    setCurrentIndex(0)
+    setCurrentWordIndex(0)
   }, [content])
 
-  return <FormattedText content={displayText} />
+  return (
+    <span>
+      <FormattedText content={displayText} />
+      {currentWordIndex < words.length && (
+        <span className="inline-block w-0.5 h-4 bg-primary ml-1 animate-pulse" />
+      )}
+    </span>
+  )
 }
 
 export const AIChat: React.FC = () => {
@@ -172,6 +184,8 @@ export const AIChat: React.FC = () => {
   const [showCachePopup, setShowCachePopup] = useState(false)
   const [cachedUserInfo, setCachedUserInfo] = useState<any>(null)
   const [typingMessageId, setTypingMessageId] = useState<string | null>(null)
+  const [showSlashCommands, setShowSlashCommands] = useState(false)
+  const [completedTypingMessages, setCompletedTypingMessages] = useState<Set<string>>(new Set())
 
   const {
     bookingData,
@@ -315,6 +329,75 @@ export const AIChat: React.FC = () => {
     setTimeout(() => {
       setShowToast(false)
     }, 3000)
+  }
+
+  // Handle slash commands
+  const handleSlashCommand = (command: string) => {
+    const lowerCommand = command.toLowerCase().substring(1) // Remove the /
+    
+    switch (lowerCommand) {
+      case 'start':
+        // Restart from first question without clearing cache
+        setMessages([])
+        setIsInitialized(false)
+        setPatientInfoStep('name')
+        setShowChatInput(false)
+        setShowSlashCommands(false)
+        resetBooking()
+        
+        setTimeout(() => {
+          addBotMessage("👋 **Hello!** Welcome to *KIMS Hospital*. I'm here to help you book your appointment **quickly and easily**! 🏥", undefined, 1000)
+          setTimeout(() => {
+            addBotMessage("📝 First, let me get your **basic information** to serve you better. Please provide your *name*:", undefined, 1800)
+            setTimeout(() => {
+              setPatientInfoStep('name')
+              setShowChatInput(true)
+              setTimeout(() => {
+                chatInputRef.current?.focus()
+              }, 100)
+            }, 3200)
+          }, 2000)
+        }, 500)
+        break
+        
+      case 'book':
+        // Go to booking flow
+        setShowSlashCommands(false)
+        handleStartBooking()
+        break
+        
+      case 'whatsapp':
+        // Redirect to WhatsApp
+        window.open('https://wa.me/918390974974', '_blank')
+        setShowSlashCommands(false)
+        break
+        
+      case 'medical':
+        // Auto-type dentist message
+        setShowSlashCommands(false)
+        setUserInput('I am looking for dentist')
+        setTimeout(() => {
+          handleUserMessage()
+        }, 100)
+        break
+        
+      case 'close':
+        // Close chat
+        setMessages([])
+        setShowChatInput(false)
+        setShowSlashCommands(false)
+        addBotMessage("👋 **Chat closed**. Thank you for visiting *KIMS Hospital*! 🏥", undefined, 800)
+        break
+        
+      case 'quit':
+        // Close tab
+        window.close()
+        break
+        
+      default:
+        setShowSlashCommands(false)
+        break
+    }
   }
 
   // Handle WebRTC call
@@ -676,7 +759,7 @@ export const AIChat: React.FC = () => {
 
   // Lock body scroll when popups are open
   useEffect(() => {
-    const isAnyPopupOpen = showCallPopup || showCachePopup || showDepartmentModal || showLocationModal || showDateModal || showPatientModal
+    const isAnyPopupOpen = showCallPopup || showCachePopup || showDepartmentModal || showLocationModal || showDateModal || showPatientModal || showSlashCommands
     
     if (isAnyPopupOpen) {
       document.body.style.overflow = 'hidden'
@@ -687,7 +770,7 @@ export const AIChat: React.FC = () => {
     return () => {
       document.body.style.overflow = 'unset'
     }
-  }, [showCallPopup, showCachePopup, showDepartmentModal, showLocationModal, showDateModal, showPatientModal])
+  }, [showCallPopup, showCachePopup, showDepartmentModal, showLocationModal, showDateModal, showPatientModal, showSlashCommands])
 
   // Initialize chat with welcome message and patient info collection
   useEffect(() => {
@@ -774,6 +857,20 @@ export const AIChat: React.FC = () => {
     if (!userInput.trim()) return
 
     const messageText = userInput.trim()
+    
+    // Check for slash commands
+    if (messageText.startsWith('/')) {
+      if (messageText === '/') {
+        setShowSlashCommands(true)
+        setUserInput('')
+        return
+      } else {
+        handleSlashCommand(messageText)
+        addUserMessage(messageText)
+        setUserInput('')
+        return
+      }
+    }
     
     // Add user message
     addUserMessage(messageText)
@@ -1089,14 +1186,17 @@ Now, **how would you like to proceed?** 🚀`,
                       {typingMessageId === message.id ? (
                         <TypewriterText 
                           content={message.content} 
-                          onComplete={() => setTypingMessageId(null)}
+                          onComplete={() => {
+                            setTypingMessageId(null)
+                            setCompletedTypingMessages(prev => new Set([...prev, message.id]))
+                          }}
                         />
                       ) : (
                         <FormattedText content={message.content} />
                       )}
                     </p>
                   </div>
-                  {message.component && (
+                  {message.component && (typingMessageId !== message.id || completedTypingMessages.has(message.id)) && (
                     <div className="mt-3 rounded-2xl overflow-hidden" style={{backgroundColor: 'transparent', boxShadow: 'none', border: 'none'}}>
                       {message.component}
                     </div>
@@ -1483,8 +1583,10 @@ Now, **how would you like to proceed?** 🚀`,
                         handleUserMessage()
                       }
                     }}
-                    placeholder="Type your message here..."
-                    className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    placeholder={userInput === '/' ? "Type a command or press Enter for menu..." : "Type your message here... (/ for commands)"}
+                    className={`w-full px-4 py-3 border rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
+                      userInput.startsWith('/') ? 'border-blue-300 bg-blue-50' : 'border-gray-300'
+                    }`}
                   />
                 </div>
                 <button
@@ -1520,6 +1622,83 @@ Now, **how would you like to proceed?** 🚀`,
                 </p>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Slash Commands Menu */}
+      {showSlashCommands && (
+        <div className="fixed bottom-20 left-4 right-4 bg-white rounded-xl shadow-xl border border-gray-200 p-4 z-20 max-w-4xl mx-auto">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-lg font-semibold text-gray-900">Quick Commands</h3>
+            <button
+              onClick={() => setShowSlashCommands(false)}
+              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <X className="w-4 h-4 text-gray-500" />
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <button
+              onClick={() => handleSlashCommand('/start')}
+              className="flex flex-col items-center p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors duration-200 group"
+            >
+              <RefreshCw className="w-6 h-6 text-blue-600 mb-2 group-hover:rotate-180 transition-transform duration-300" strokeWidth={1.5} />
+              <span className="font-semibold text-blue-700">/Start</span>
+              <span className="text-xs text-blue-600 text-center mt-1">Restart from first question</span>
+            </button>
+            
+            <button
+              onClick={() => handleSlashCommand('/book')}
+              className="flex flex-col items-center p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors duration-200 group"
+            >
+              <Calendar className="w-6 h-6 text-green-600 mb-2 group-hover:scale-110 transition-transform duration-200" strokeWidth={1.5} />
+              <span className="font-semibold text-green-700">/Book</span>
+              <span className="text-xs text-green-600 text-center mt-1">Go to booking flow</span>
+            </button>
+            
+            <button
+              onClick={() => handleSlashCommand('/whatsapp')}
+              className="flex flex-col items-center p-3 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors duration-200 group"
+            >
+              <MessageCircle className="w-6 h-6 text-emerald-600 mb-2 group-hover:scale-110 transition-transform duration-200" strokeWidth={1.5} />
+              <span className="font-semibold text-emerald-700">/WhatsApp</span>
+              <span className="text-xs text-emerald-600 text-center mt-1">Contact via WhatsApp</span>
+            </button>
+            
+            <button
+              onClick={() => handleSlashCommand('/medical')}
+              className="flex flex-col items-center p-3 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors duration-200 group"
+            >
+              <User className="w-6 h-6 text-purple-600 mb-2 group-hover:scale-110 transition-transform duration-200" strokeWidth={1.5} />
+              <span className="font-semibold text-purple-700">/Medical</span>
+              <span className="text-xs text-purple-600 text-center mt-1">Looking for dentist</span>
+            </button>
+            
+            <button
+              onClick={() => handleSlashCommand('/close')}
+              className="flex flex-col items-center p-3 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors duration-200 group"
+            >
+              <X className="w-6 h-6 text-orange-600 mb-2 group-hover:scale-110 transition-transform duration-200" strokeWidth={1.5} />
+              <span className="font-semibold text-orange-700">/Close</span>
+              <span className="text-xs text-orange-600 text-center mt-1">Close chat session</span>
+            </button>
+            
+            <button
+              onClick={() => handleSlashCommand('/quit')}
+              className="flex flex-col items-center p-3 bg-red-50 hover:bg-red-100 rounded-lg transition-colors duration-200 group"
+            >
+              <X className="w-6 h-6 text-red-600 mb-2 group-hover:rotate-90 transition-transform duration-200" strokeWidth={1.5} />
+              <span className="font-semibold text-red-700">/Quit</span>
+              <span className="text-xs text-red-600 text-center mt-1">Close browser tab</span>
+            </button>
+          </div>
+          
+          <div className="mt-3 pt-3 border-t border-gray-200">
+            <p className="text-xs text-gray-500 text-center">
+              Type <span className="font-mono bg-gray-100 px-1 rounded">/</span> followed by a command, or just <span className="font-mono bg-gray-100 px-1 rounded">/</span> to see this menu
+            </p>
           </div>
         </div>
       )}
