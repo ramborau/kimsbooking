@@ -692,12 +692,6 @@ export const AIChat: React.FC = () => {
     }, 100)
   }
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleUserMessage()
-    }
-  }
 
   // Handle form submission for each step
   const handlePatientFormSubmit = () => {
@@ -1013,8 +1007,8 @@ Now, how would you like to proceed?`,
               </div>
             ) : (
               <div className="flex items-start gap-3 mb-4 flex-row-reverse">
-                <div className="w-10 h-10 flex-shrink-0">
-                  <img src="/user.png" alt="User" className="w-10 h-10 rounded-full object-cover" />
+                <div className="w-10 h-10 flex-shrink-0 rounded-full overflow-hidden p-1 bg-gray-100">
+                  <img src="/user.png" alt="User" className="w-full h-full rounded-full object-cover" />
                 </div>
                 <div className="max-w-[80%]">
                   <div className="rounded-2xl rounded-br-md px-4 py-3 shadow-sm" style={{backgroundColor: '#ffeeee'}}>
@@ -1083,6 +1077,11 @@ Now, how would you like to proceed?`,
                           placeholder="First Name"
                           value={collectedPatientInfo.firstName}
                           onChange={handleFirstNameChange}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter' && validation.firstName && validation.lastName) {
+                              handlePatientFormSubmit()
+                            }
+                          }}
                           onBlur={() => setTouched(prev => ({ ...prev, firstName: true }))}
                           className={cn(
                             "w-full h-12 pl-10 pr-10 rounded-lg border-2 transition-all duration-200 text-base outline-none",
@@ -1113,6 +1112,11 @@ Now, how would you like to proceed?`,
                           placeholder="Last Name"
                           value={collectedPatientInfo.lastName}
                           onChange={handleLastNameChange}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter' && validation.firstName && validation.lastName) {
+                              handlePatientFormSubmit()
+                            }
+                          }}
                           onBlur={() => setTouched(prev => ({ ...prev, lastName: true }))}
                           className={cn(
                             "w-full h-12 pl-10 pr-10 rounded-lg border-2 transition-all duration-200 text-base outline-none",
@@ -1170,6 +1174,11 @@ Now, how would you like to proceed?`,
                         placeholder="Email Address"
                         value={collectedPatientInfo.email}
                         onChange={handleEmailChange}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter' && validation.email) {
+                            handlePatientFormSubmit()
+                          }
+                        }}
                         onBlur={() => setTouched(prev => ({ ...prev, email: true }))}
                         className={cn(
                           "w-full h-12 pl-10 pr-10 rounded-lg border-2 transition-all duration-200 text-base outline-none",
@@ -1270,6 +1279,11 @@ Now, how would you like to proceed?`,
                         placeholder="Mobile Number"
                         value={collectedPatientInfo.mobile}
                         onChange={handlePhoneChange}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter' && validation.mobile) {
+                            handlePatientFormSubmit()
+                          }
+                        }}
                         onBlur={() => setTouched(prev => ({ ...prev, mobile: true }))}
                         className={cn(
                           "w-full h-12 pl-24 pr-10 rounded-lg border-2 transition-all duration-200 text-base outline-none",
@@ -1355,39 +1369,34 @@ Now, how would you like to proceed?`,
               </div>
             ) : (
               /* Regular Chat Input */
-              <div className="flex items-end gap-3">
+              <div className="flex items-center gap-2">
                 <div className="flex-1">
-                  <textarea
-                    ref={chatInputRef}
+                  <input
+                    type="text"
+                    ref={chatInputRef as any}
                     value={userInput}
                     onChange={(e) => setUserInput(e.target.value)}
-                    onKeyPress={handleKeyPress}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        handleUserMessage()
+                      }
+                    }}
                     placeholder="Type your message here..."
-                    className="w-full p-3 border border-gray-300 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                    rows={1}
-                    style={{ 
-                      minHeight: '44px',
-                      maxHeight: '120px',
-                      scrollbarWidth: 'thin'
-                    }}
-                    onInput={(e) => {
-                      const target = e.target as HTMLTextAreaElement
-                      target.style.height = 'auto'
-                      target.style.height = Math.min(target.scrollHeight, 120) + 'px'
-                    }}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   />
                 </div>
                 <button
                   onClick={handleUserMessage}
                   disabled={!userInput.trim()}
-                  className={`px-4 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center min-w-[60px] ${
+                  className={`h-12 w-12 rounded-full font-semibold transition-all duration-200 flex items-center justify-center ${
                     userInput.trim()
                       ? 'bg-primary hover:bg-primary/90 text-white shadow-sm'
                       : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                   }`}
                 >
                   <svg
-                    className="w-5 h-5"
+                    className="w-5 h-5 rotate-90"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
