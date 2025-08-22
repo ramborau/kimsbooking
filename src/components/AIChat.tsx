@@ -188,7 +188,7 @@ export const AIChat: React.FC = () => {
   const [completedTypingMessages, setCompletedTypingMessages] = useState<Set<string>>(new Set())
   const [messageQueue, setMessageQueue] = useState<Array<{content: string, component?: React.ReactNode, delay: number, callback?: () => void}>>([])
   const [isProcessingQueue, setIsProcessingQueue] = useState(false)
-  const [queueCallback, setQueueCallback] = useState<(() => void) | null>(null)
+  const [currentMessageCallback, setCurrentMessageCallback] = useState<(() => void) | null>(null)
 
   const {
     bookingData,
@@ -234,11 +234,6 @@ export const AIChat: React.FC = () => {
   // Add a bot message to the queue
   const addBotMessage = (content: string, component?: React.ReactNode, delay: number = 1500, callback?: () => void) => {
     setMessageQueue(prev => [...prev, { content, component, delay, callback }])
-    
-    // If this message has a callback, it should be the final callback for this sequence
-    if (callback) {
-      setQueueCallback(callback)
-    }
   }
 
   // Process the message queue one at a time
@@ -248,6 +243,7 @@ export const AIChat: React.FC = () => {
     setIsProcessingQueue(true)
     const nextMessage = messageQueue[0]
     setMessageQueue(prev => prev.slice(1))
+    setCurrentMessageCallback(nextMessage.callback || null)
     
     setIsTyping(true)
     
@@ -280,16 +276,16 @@ export const AIChat: React.FC = () => {
     setCompletedTypingMessages(prev => new Set([...prev, messageId]))
     setIsProcessingQueue(false)
     
+    // Execute callback immediately after this message finishes (for opening popups)
+    if (currentMessageCallback) {
+      setTimeout(currentMessageCallback, 500) // Small delay before opening popup
+      setCurrentMessageCallback(null)
+    }
+    
     // Process next message in queue after a short delay
     setTimeout(() => {
       if (messageQueue.length > 0) {
         processNextMessage()
-      } else {
-        // Queue is empty, execute any pending callback
-        if (queueCallback) {
-          setTimeout(queueCallback, 500) // Small delay before opening popup
-          setQueueCallback(null)
-        }
       }
     }, 300)
   }
