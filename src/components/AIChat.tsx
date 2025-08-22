@@ -276,9 +276,9 @@ export const AIChat: React.FC = () => {
     setCompletedTypingMessages(prev => new Set([...prev, messageId]))
     setIsProcessingQueue(false)
     
-    // Execute callback immediately after this message finishes (for opening popups)
+    // Execute callback after this message finishes with 3 second delay
     if (currentMessageCallback) {
-      setTimeout(currentMessageCallback, 500) // Small delay before opening popup
+      setTimeout(currentMessageCallback, 3000) // 3 second delay before opening popup
       setCurrentMessageCallback(null)
     }
     
@@ -350,17 +350,13 @@ export const AIChat: React.FC = () => {
     // Restart the chat flow
     setTimeout(() => {
       addBotMessage("👋 **Hello!** Welcome to *KIMS Hospital*. I'm here to help you book your appointment **quickly and easily**! 🏥", undefined, 1000)
-      setTimeout(() => {
-        addBotMessage("📝 First, let me get your **basic information** to serve you better. Please provide your *name*:", undefined, 1800)
-        
+      addBotMessage("📝 First, let me get your **basic information** to serve you better. Please provide your *name*:", undefined, 1800, () => {
+        setPatientInfoStep('name')
+        setShowChatInput(true)
         setTimeout(() => {
-          setPatientInfoStep('name')
-          setShowChatInput(true)
-          setTimeout(() => {
-            chatInputRef.current?.focus()
-          }, 100)
-        }, 3200)
-      }, 2000)
+          chatInputRef.current?.focus()
+        }, 100)
+      })
     }, 500)
   }
 
@@ -832,18 +828,13 @@ export const AIChat: React.FC = () => {
       if (!hasCachedInfo) {
         timeoutId1 = setTimeout(() => {
           addBotMessage("👋 **Hello!** Welcome to *KIMS Hospital*. I'm here to help you book your appointment **quickly and easily**! 🏥", undefined, 1000)
-          
-          timeoutId2 = setTimeout(() => {
-            addBotMessage("📝 First, let me get your **basic information** to serve you better. Please provide your *name*:", undefined, 1800)
-            
+          addBotMessage("📝 First, let me get your **basic information** to serve you better. Please provide your *name*:", undefined, 1800, () => {
+            setPatientInfoStep('name')
+            setShowChatInput(true)
             setTimeout(() => {
-              setPatientInfoStep('name')
-              setShowChatInput(true)
-              setTimeout(() => {
-                chatInputRef.current?.focus()
-              }, 100)
-            }, 3200)
-          }, 2000)
+              chatInputRef.current?.focus()
+            }, 100)
+          })
         }, 500)
         
         timeoutId3 = setTimeout(() => {
@@ -939,14 +930,13 @@ export const AIChat: React.FC = () => {
             collectedPatientInfo.firstName.trim() && collectedPatientInfo.lastName.trim()) {
           addUserMessage(`${collectedPatientInfo.firstName} ${collectedPatientInfo.lastName}`)
           setShowChatInput(false)
-          addBotMessage(`😊 **Nice to meet you**, *${collectedPatientInfo.firstName} ${collectedPatientInfo.lastName}*! ${collectedPatientInfo.firstName}, please provide your **email address**: 📧`, undefined, 800)
-          setTimeout(() => {
+          addBotMessage(`😊 **Nice to meet you**, *${collectedPatientInfo.firstName} ${collectedPatientInfo.lastName}*! ${collectedPatientInfo.firstName}, please provide your **email address**: 📧`, undefined, 800, () => {
             setPatientInfoStep('email')
             setShowChatInput(true)
             setTimeout(() => {
               chatInputRef.current?.focus()
             }, 100)
-          }, 1200)
+          })
         }
         break
         
@@ -954,14 +944,13 @@ export const AIChat: React.FC = () => {
         if (validation.email && collectedPatientInfo.email.trim()) {
           addUserMessage(collectedPatientInfo.email)
           setShowChatInput(false)
-          addBotMessage(`✅ **Great!** Finally, *${collectedPatientInfo.firstName}*, please provide your **mobile number**: 📱`, undefined, 800)
-          setTimeout(() => {
+          addBotMessage(`✅ **Great!** Finally, *${collectedPatientInfo.firstName}*, please provide your **mobile number**: 📱`, undefined, 800, () => {
             setPatientInfoStep('mobile')
             setShowChatInput(true)
             setTimeout(() => {
               chatInputRef.current?.focus()
             }, 100)
-          }, 1200)
+          })
         }
         break
         
@@ -1603,7 +1592,7 @@ Now, **how would you like to proceed?** 🚀`,
             ) : (
               /* Regular Chat Input */
               <div className="flex items-center gap-2">
-                <div className="flex-1">
+                <div className="flex-1 relative">
                   <input
                     type="text"
                     ref={chatInputRef as any}
@@ -1616,10 +1605,19 @@ Now, **how would you like to proceed?** 🚀`,
                       }
                     }}
                     placeholder={userInput === '/' ? "Type a command or press Enter for menu..." : "Type your message here... (/ for commands)"}
-                    className={`w-full px-4 py-3 border rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
+                    className={`w-full px-4 py-3 pr-12 border rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
                       userInput.startsWith('/') ? 'border-blue-300 bg-blue-50' : 'border-gray-300'
                     }`}
                   />
+                  
+                  {/* Commands Menu Button */}
+                  <button
+                    onClick={() => setShowSlashCommands(!showSlashCommands)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full transition-colors"
+                    title="Show commands"
+                  >
+                    <MoreVertical className="w-4 h-4 text-gray-400" strokeWidth={1.5} />
+                  </button>
                 </div>
                 <button
                   onClick={handleUserMessage}
@@ -1660,77 +1658,75 @@ Now, **how would you like to proceed?** 🚀`,
 
       {/* Slash Commands Menu */}
       {showSlashCommands && (
-        <div className="fixed bottom-20 left-4 right-4 bg-white rounded-xl shadow-xl border border-gray-200 p-4 z-20 max-w-4xl mx-auto">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-lg font-semibold text-gray-900">Quick Commands</h3>
-            <button
-              onClick={() => setShowSlashCommands(false)}
-              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <X className="w-4 h-4 text-gray-500" />
-            </button>
-          </div>
-          
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="fixed bottom-24 right-8 bg-white rounded-lg shadow-xl border border-gray-200 p-2 z-30 w-48">
+          <div className="space-y-1">
             <button
               onClick={() => handleSlashCommand('/start')}
-              className="flex flex-col items-center p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors duration-200 group"
+              className="w-full text-left px-3 py-2 hover:bg-blue-50 rounded-md transition-colors duration-200 flex items-center gap-2"
             >
-              <RefreshCw className="w-6 h-6 text-blue-600 mb-2 group-hover:rotate-180 transition-transform duration-300" strokeWidth={1.5} />
-              <span className="font-semibold text-blue-700">/Start</span>
-              <span className="text-xs text-blue-600 text-center mt-1">Restart from first question</span>
+              <RefreshCw className="w-4 h-4 text-blue-600" strokeWidth={1.5} />
+              <div>
+                <div className="font-medium text-blue-700 text-sm">/Start</div>
+                <div className="text-xs text-blue-600">Restart chat</div>
+              </div>
             </button>
             
             <button
               onClick={() => handleSlashCommand('/book')}
-              className="flex flex-col items-center p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors duration-200 group"
+              className="w-full text-left px-3 py-2 hover:bg-green-50 rounded-md transition-colors duration-200 flex items-center gap-2"
             >
-              <Calendar className="w-6 h-6 text-green-600 mb-2 group-hover:scale-110 transition-transform duration-200" strokeWidth={1.5} />
-              <span className="font-semibold text-green-700">/Book</span>
-              <span className="text-xs text-green-600 text-center mt-1">Go to booking flow</span>
+              <Calendar className="w-4 h-4 text-green-600" strokeWidth={1.5} />
+              <div>
+                <div className="font-medium text-green-700 text-sm">/Book</div>
+                <div className="text-xs text-green-600">Book appointment</div>
+              </div>
             </button>
             
             <button
               onClick={() => handleSlashCommand('/whatsapp')}
-              className="flex flex-col items-center p-3 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors duration-200 group"
+              className="w-full text-left px-3 py-2 hover:bg-emerald-50 rounded-md transition-colors duration-200 flex items-center gap-2"
             >
-              <MessageCircle className="w-6 h-6 text-emerald-600 mb-2 group-hover:scale-110 transition-transform duration-200" strokeWidth={1.5} />
-              <span className="font-semibold text-emerald-700">/WhatsApp</span>
-              <span className="text-xs text-emerald-600 text-center mt-1">Contact via WhatsApp</span>
+              <MessageCircle className="w-4 h-4 text-emerald-600" strokeWidth={1.5} />
+              <div>
+                <div className="font-medium text-emerald-700 text-sm">/WhatsApp</div>
+                <div className="text-xs text-emerald-600">Contact us</div>
+              </div>
             </button>
             
             <button
               onClick={() => handleSlashCommand('/medical')}
-              className="flex flex-col items-center p-3 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors duration-200 group"
+              className="w-full text-left px-3 py-2 hover:bg-purple-50 rounded-md transition-colors duration-200 flex items-center gap-2"
             >
-              <User className="w-6 h-6 text-purple-600 mb-2 group-hover:scale-110 transition-transform duration-200" strokeWidth={1.5} />
-              <span className="font-semibold text-purple-700">/Medical</span>
-              <span className="text-xs text-purple-600 text-center mt-1">Looking for dentist</span>
+              <User className="w-4 h-4 text-purple-600" strokeWidth={1.5} />
+              <div>
+                <div className="font-medium text-purple-700 text-sm">/Medical</div>
+                <div className="text-xs text-purple-600">Find dentist</div>
+              </div>
             </button>
+            
+            <div className="border-t border-gray-100 my-1"></div>
             
             <button
               onClick={() => handleSlashCommand('/close')}
-              className="flex flex-col items-center p-3 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors duration-200 group"
+              className="w-full text-left px-3 py-2 hover:bg-orange-50 rounded-md transition-colors duration-200 flex items-center gap-2"
             >
-              <X className="w-6 h-6 text-orange-600 mb-2 group-hover:scale-110 transition-transform duration-200" strokeWidth={1.5} />
-              <span className="font-semibold text-orange-700">/Close</span>
-              <span className="text-xs text-orange-600 text-center mt-1">Close chat session</span>
+              <X className="w-4 h-4 text-orange-600" strokeWidth={1.5} />
+              <div>
+                <div className="font-medium text-orange-700 text-sm">/Close</div>
+                <div className="text-xs text-orange-600">Close chat</div>
+              </div>
             </button>
             
             <button
               onClick={() => handleSlashCommand('/quit')}
-              className="flex flex-col items-center p-3 bg-red-50 hover:bg-red-100 rounded-lg transition-colors duration-200 group"
+              className="w-full text-left px-3 py-2 hover:bg-red-50 rounded-md transition-colors duration-200 flex items-center gap-2"
             >
-              <X className="w-6 h-6 text-red-600 mb-2 group-hover:rotate-90 transition-transform duration-200" strokeWidth={1.5} />
-              <span className="font-semibold text-red-700">/Quit</span>
-              <span className="text-xs text-red-600 text-center mt-1">Close browser tab</span>
+              <X className="w-4 h-4 text-red-600" strokeWidth={1.5} />
+              <div>
+                <div className="font-medium text-red-700 text-sm">/Quit</div>
+                <div className="text-xs text-red-600">Close tab</div>
+              </div>
             </button>
-          </div>
-          
-          <div className="mt-3 pt-3 border-t border-gray-200">
-            <p className="text-xs text-gray-500 text-center">
-              Type <span className="font-mono bg-gray-100 px-1 rounded">/</span> followed by a command, or just <span className="font-mono bg-gray-100 px-1 rounded">/</span> to see this menu
-            </p>
           </div>
         </div>
       )}
