@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Bot, User } from 'lucide-react'
 import { useBookingStore } from '@/store/bookingStore'
-import { DepartmentSelect } from '@/components/booking/DepartmentSelect'
-import { LocationSelect } from '@/components/booking/LocationSelect'
-import { DatePicker } from '@/components/booking/DatePicker'
-import { PatientForm } from '@/components/booking/PatientForm'
 import { BookingConfirmationPopup } from '@/components/booking/BookingConfirmationPopup'
+import { DepartmentModal } from '@/components/chat/DepartmentModal'
+import { LocationModal } from '@/components/chat/LocationModal'
+import { DateTimeModal } from '@/components/chat/DateTimeModal'
+import { PatientModal } from '@/components/chat/PatientModal'
 
 interface Message {
   id: string
@@ -42,7 +42,14 @@ export const AIChat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([])
   const [isTyping, setIsTyping] = useState(false)
   const [showConfirmation, setShowConfirmation] = useState(false)
+  const [_chatMode, setChatMode] = useState<'booking' | 'chat'>('booking')
+  const [userInput, setUserInput] = useState('')
+  const [showDepartmentModal, setShowDepartmentModal] = useState(false)
+  const [showLocationModal, setShowLocationModal] = useState(false)
+  const [showDateModal, setShowDateModal] = useState(false)
+  const [showPatientModal, setShowPatientModal] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [isInitialized, setIsInitialized] = useState(false)
 
   const {
     bookingData,
@@ -106,84 +113,179 @@ export const AIChat: React.FC = () => {
 
   // Initialize chat with welcome message
   useEffect(() => {
-    setTimeout(() => {
-      addBotMessage("Hello! 👋 Welcome to KIMS Hospital. I'm here to help you book your appointment quickly and easily.", undefined, 1000)
-      
+    if (!isInitialized) {
       setTimeout(() => {
-        addBotMessage("Let's get started with your appointment booking!", 
-          <button
-            onClick={handleStartBooking}
-            className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
-          >
-            📅 Book An Appointment
-          </button>,
-          2000
-        )
-      }, 2000)
-    }, 500)
-  }, [])
+        addBotMessage("Hello! 👋 Welcome to KIMS Hospital. I'm here to help you book your appointment quickly and easily.", undefined, 1000)
+        
+        setTimeout(() => {
+          addBotMessage("How would you like to proceed?", 
+            <div className="space-y-3">
+              <button
+                onClick={handleStartBooking}
+                className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
+              >
+                📅 Book An Appointment
+              </button>
+              <button
+                onClick={handleChatMode}
+                className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2"
+              >
+                💬 Chat with Bot
+              </button>
+            </div>,
+            2000
+          )
+        }, 2000)
+      }, 500)
+      setIsInitialized(true)
+    }
+  }, [isInitialized])
 
   const handleStartBooking = () => {
-    addBotMessage("Great! First, please select the medical department you need:", 
-      <DepartmentSelect 
-        onSelect={(dept) => {
-          setDepartment(dept)
-          setTimeout(() => handleDepartmentSelected(dept), 500)
-        }}
-        selected={bookingData.department?.id}
-        searchQuery=""
-        onSearchChange={() => {}}
-      />
+    setChatMode('booking')
+    addBotMessage("Great! First, please select the medical department you need:")
+    setShowDepartmentModal(true)
+  }
+
+  const handleChatMode = () => {
+    setChatMode('chat')
+    addBotMessage("I'm here to help! Please tell me what you need assistance with. For example, you can say 'I need to see a dentist at the earliest' or 'I want to book a cardiology appointment'.")
+    // Add input field component
+    addBotMessage("", 
+      <div className="p-4">
+        <textarea
+          value={userInput}
+          onChange={(e) => setUserInput(e.target.value)}
+          placeholder="Type your message here..."
+          className="w-full p-3 border border-gray-300 rounded-lg resize-none"
+          rows={3}
+        />
+        <button
+          onClick={handleUserMessage}
+          className="w-full mt-3 bg-primary hover:bg-primary/90 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200"
+        >
+          Send Message
+        </button>
+      </div>
     )
   }
 
+  const handleUserMessage = () => {
+    if (!userInput.trim()) return
+
+    // Add user message
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      type: 'user',
+      content: userInput,
+      timestamp: new Date()
+    }
+    setMessages(prev => [...prev, userMessage])
+
+    // Process the message and respond
+    processUserMessage(userInput)
+    setUserInput('')
+  }
+
+  const processUserMessage = (message: string) => {
+    const lowerMessage = message.toLowerCase()
+    
+    // Check for dentist request
+    if (lowerMessage.includes('dentist') || lowerMessage.includes('dental')) {
+      addBotMessage("I found the earliest available dentist appointment for you!")
+      
+      // Auto-select dentistry department
+      const dentistryDept = { id: 1, name: 'Dentistry', description: 'Dental care and oral health' }
+      setDepartment(dentistryDept)
+      
+      // Show earliest available appointment
+      setTimeout(() => {
+        addBotMessage(`Great! I've found Dr. Sarah Johnson, our experienced dentist, available tomorrow at 10:00 AM. Would you like to book this appointment?`,
+          <div className="p-4 space-y-3">
+            <div className="bg-gray-50 p-3 rounded-lg">
+              <p><strong>Doctor:</strong> Dr. Sarah Johnson</p>
+              <p><strong>Specialty:</strong> Dentistry</p>
+              <p><strong>Date:</strong> Tomorrow</p>
+              <p><strong>Time:</strong> 10:00 AM</p>
+              <p><strong>Location:</strong> KIMS Main Campus</p>
+            </div>
+            <button
+              onClick={() => {
+                // Set the appointment details
+                setDoctor({ id: 1, name: 'Dr. Sarah Johnson', qualification: 'DDS, Oral Surgery' })
+                setTimeSlot('10:00 AM')
+                setDate(new Date(Date.now() + 24 * 60 * 60 * 1000)) // Tomorrow
+                setLocation({ id: 1, name: 'KIMS Main Campus' })
+                
+                // Show patient form
+                setTimeout(() => {
+                  addBotMessage("Perfect! Now I just need your contact information to complete the booking:")
+                  setShowPatientModal(true)
+                }, 500)
+              }}
+              className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200"
+            >
+              ✅ Book This Appointment
+            </button>
+            <button
+              onClick={() => {
+                addBotMessage("No problem! Let me show you all available options:")
+                setShowDepartmentModal(true)
+              }}
+              className="w-full bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200"
+            >
+              🔍 See Other Options
+            </button>
+          </div>
+        )
+      }, 1000)
+    } else {
+      // Generic response for other queries
+      addBotMessage("I understand you're looking for medical assistance. Let me help you book an appointment with the right specialist:")
+      setTimeout(() => {
+        setShowDepartmentModal(true)
+      }, 1000)
+    }
+  }
+
+
   const handleDepartmentSelected = (department: any) => {
-    addBotMessage(`Excellent choice! ${department.name} is one of our specialized departments with experienced doctors. Now, let's find the most convenient location for you:`,
-      <LocationSelect
-        onSelect={(location) => {
-          setLocation(location)
-          setTimeout(() => handleLocationSelected(location), 500)
-        }}
-        selected={bookingData.location?.id}
-        userLocation={null}
-      />
-    )
+    setDepartment(department)
+    setShowDepartmentModal(false)
+    addBotMessage(`Excellent choice! ${department.name} is one of our specialized departments with experienced doctors. Now, let's find the most convenient location for you:`)
+    setTimeout(() => {
+      setShowLocationModal(true)
+    }, 1000)
   }
 
   const handleLocationSelected = (location: any) => {
-    addBotMessage(`Perfect! ${location.name} is a great choice. Now, please select your preferred date and time for the appointment:`,
-      <DatePicker
-        onSelect={(date) => {
-          setDate(date)
-        }}
-        selected={bookingData.date}
-        popupSelectedDate={null}
-        onDoctorSlotSelect={(doctor, slot, _period) => {
-          setDoctor(doctor)
-          setTimeSlot(slot)
-          setTimeout(() => handleDateTimeSelected(doctor, slot, bookingData.date), 500)
-        }}
-      />
-    )
+    setLocation(location)
+    setShowLocationModal(false)
+    addBotMessage(`Perfect! ${location.name} is a great choice. Now, please select your preferred date and time for the appointment:`)
+    setTimeout(() => {
+      setShowDateModal(true)
+    }, 1000)
   }
 
   const handleDateTimeSelected = (doctor: any, timeSlot: string, date: Date | null) => {
+    setDoctor(doctor)
+    setTimeSlot(timeSlot)
+    if (date) setDate(date)
+    setShowDateModal(false)
+    
     const dateStr = date?.toLocaleDateString('en-US', { 
       weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' 
     })
     
-    addBotMessage(`Wonderful! You've selected an appointment with ${doctor.name} on ${dateStr} at ${timeSlot}. Now I need some basic information to complete your booking:`,
-      <PatientForm
-        onSubmit={(patientData) => {
-          setPatient(patientData)
-          setTimeout(() => handlePatientInfoSubmitted(patientData), 500)
-        }}
-        initialData={bookingData.patient || {}}
-      />
-    )
+    addBotMessage(`Wonderful! You've selected an appointment with ${doctor.name} on ${dateStr} at ${timeSlot}. Now I need some basic information to complete your booking:`)
+    setTimeout(() => {
+      setShowPatientModal(true)
+    }, 1000)
   }
 
   const handlePatientInfoSubmitted = (patientData: any) => {
+    setPatient(patientData)
+    setShowPatientModal(false)
     addBotMessage(`Thank you, ${patientData.firstName}! I have all the information needed. Let me confirm your appointment details and process your booking...`)
     
     setTimeout(() => {
@@ -283,6 +385,34 @@ export const AIChat: React.FC = () => {
         isVisible={showConfirmation}
         bookingData={bookingData}
         onClose={handleConfirmationClose}
+      />
+
+      {/* Department Selection Modal */}
+      <DepartmentModal
+        isOpen={showDepartmentModal}
+        onSelect={handleDepartmentSelected}
+        selected={bookingData.department?.id}
+      />
+
+      {/* Location Selection Modal */}
+      <LocationModal
+        isOpen={showLocationModal}
+        onSelect={handleLocationSelected}
+        selected={bookingData.location?.id}
+      />
+
+      {/* Date & Time Selection Modal */}
+      <DateTimeModal
+        isOpen={showDateModal}
+        onSelect={handleDateTimeSelected}
+        selectedDate={bookingData.date}
+      />
+
+      {/* Patient Information Modal */}
+      <PatientModal
+        isOpen={showPatientModal}
+        onSubmit={handlePatientInfoSubmitted}
+        initialData={bookingData.patient || {}}
       />
 
       {/* Footer */}
