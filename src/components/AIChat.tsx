@@ -48,7 +48,9 @@ export const AIChat: React.FC = () => {
   const [showLocationModal, setShowLocationModal] = useState(false)
   const [showDateModal, setShowDateModal] = useState(false)
   const [showPatientModal, setShowPatientModal] = useState(false)
+  const [showChatInput, setShowChatInput] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const chatInputRef = useRef<HTMLTextAreaElement>(null)
   const [isInitialized, setIsInitialized] = useState(false)
 
   const {
@@ -168,6 +170,7 @@ export const AIChat: React.FC = () => {
 
   const handleStartBooking = () => {
     setChatMode('booking')
+    setShowChatInput(false) // Hide chat input when switching to booking mode
     
     // Add user message for button selection
     addUserMessage("📅 Book An Appointment")
@@ -185,43 +188,40 @@ export const AIChat: React.FC = () => {
     addUserMessage("💬 Chat with Bot")
     
     addBotMessage("I'm here to help! Please tell me what you need assistance with. For example, you can say 'I need to see a dentist at the earliest' or 'I want to book a cardiology appointment'.", undefined, 1800)
-    // Add input field component with delay
+    
+    // Show chat input at bottom after delay
     setTimeout(() => {
-      addBotMessage("", 
-        <div className="p-4">
-          <textarea
-            value={userInput}
-            onChange={(e) => setUserInput(e.target.value)}
-            placeholder="Type your message here..."
-            className="w-full p-3 border border-gray-300 rounded-lg resize-none"
-            rows={3}
-          />
-          <button
-            onClick={handleUserMessage}
-            className="w-full mt-3 bg-primary hover:bg-primary/90 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200"
-          >
-            Send Message
-          </button>
-        </div>, 800
-      )
-    }, 2200)
+      setShowChatInput(true)
+      // Auto-focus the input
+      setTimeout(() => {
+        chatInputRef.current?.focus()
+      }, 100)
+    }, 2800)
   }
 
   const handleUserMessage = () => {
     if (!userInput.trim()) return
 
+    const messageText = userInput.trim()
+    
     // Add user message
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      type: 'user',
-      content: userInput,
-      timestamp: new Date()
-    }
-    setMessages(prev => [...prev, userMessage])
+    addUserMessage(messageText)
 
     // Process the message and respond
-    processUserMessage(userInput)
+    processUserMessage(messageText)
     setUserInput('')
+    
+    // Keep focus on input
+    setTimeout(() => {
+      chatInputRef.current?.focus()
+    }, 100)
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleUserMessage()
+    }
   }
 
   const processUserMessage = (message: string) => {
@@ -505,14 +505,70 @@ export const AIChat: React.FC = () => {
         initialData={bookingData.patient || {}}
       />
 
-      {/* Footer */}
-      <div className="bg-white border-t px-4 py-3">
-        <div className="text-center">
-          <p className="text-xs text-gray-500">
-            KIMS Hospital AI Assistant - Book your appointments with ease
-          </p>
+      {/* Chat Input or Footer */}
+      {showChatInput ? (
+        <div className="bg-white border-t border-gray-200 p-4">
+          <div className="flex items-end gap-3">
+            <div className="flex-1">
+              <textarea
+                ref={chatInputRef}
+                value={userInput}
+                onChange={(e) => setUserInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Type your message here..."
+                className="w-full p-3 border border-gray-300 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                rows={1}
+                style={{ 
+                  minHeight: '44px',
+                  maxHeight: '120px',
+                  scrollbarWidth: 'thin'
+                }}
+                onInput={(e) => {
+                  const target = e.target as HTMLTextAreaElement
+                  target.style.height = 'auto'
+                  target.style.height = Math.min(target.scrollHeight, 120) + 'px'
+                }}
+              />
+            </div>
+            <button
+              onClick={handleUserMessage}
+              disabled={!userInput.trim()}
+              className={`px-4 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center min-w-[60px] ${
+                userInput.trim()
+                  ? 'bg-primary hover:bg-primary/90 text-white shadow-sm'
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                />
+              </svg>
+            </button>
+          </div>
+          <div className="text-center mt-2">
+            <p className="text-xs text-gray-400">
+              Press Enter to send • Shift+Enter for new line
+            </p>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="bg-white border-t px-4 py-3">
+          <div className="text-center">
+            <p className="text-xs text-gray-500">
+              KIMS Hospital AI Assistant - Book your appointments with ease
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
