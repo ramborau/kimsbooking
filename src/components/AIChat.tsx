@@ -49,6 +49,13 @@ export const AIChat: React.FC = () => {
   const [showDateModal, setShowDateModal] = useState(false)
   const [showPatientModal, setShowPatientModal] = useState(false)
   const [showChatInput, setShowChatInput] = useState(false)
+  const [patientInfoStep, setPatientInfoStep] = useState<'firstName' | 'lastName' | 'email' | 'mobile' | 'complete'>('firstName')
+  const [collectedPatientInfo, setCollectedPatientInfo] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    mobile: ''
+  })
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const chatInputRef = useRef<HTMLTextAreaElement>(null)
   const [isInitialized, setIsInitialized] = useState(false)
@@ -224,8 +231,84 @@ export const AIChat: React.FC = () => {
     }
   }
 
+  const handlePatientInfoStep = (input: string) => {
+    const trimmedInput = input.trim()
+    
+    switch (patientInfoStep) {
+      case 'firstName':
+        if (trimmedInput.length >= 2) {
+          setCollectedPatientInfo(prev => ({ ...prev, firstName: trimmedInput }))
+          addBotMessage(`Nice to meet you, ${trimmedInput}! What's your last name?`, undefined, 800)
+          setPatientInfoStep('lastName')
+        } else {
+          addBotMessage("Please enter a valid first name (at least 2 characters).", undefined, 800)
+        }
+        break
+        
+      case 'lastName':
+        if (trimmedInput.length >= 2) {
+          setCollectedPatientInfo(prev => ({ ...prev, lastName: trimmedInput }))
+          addBotMessage(`Thank you, ${collectedPatientInfo.firstName} ${trimmedInput}! What's your email address?`, undefined, 800)
+          setPatientInfoStep('email')
+        } else {
+          addBotMessage("Please enter a valid last name (at least 2 characters).", undefined, 800)
+        }
+        break
+        
+      case 'email':
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (emailRegex.test(trimmedInput)) {
+          setCollectedPatientInfo(prev => ({ ...prev, email: trimmedInput }))
+          addBotMessage("Great! Now please provide your mobile number.", undefined, 800)
+          setPatientInfoStep('mobile')
+        } else {
+          addBotMessage("Please enter a valid email address (e.g., john@example.com).", undefined, 800)
+        }
+        break
+        
+      case 'mobile':
+        const mobileRegex = /^[0-9]{10}$/
+        if (mobileRegex.test(trimmedInput.replace(/[^\d]/g, ''))) {
+          const mobile = trimmedInput.replace(/[^\d]/g, '')
+          setCollectedPatientInfo(prev => ({ ...prev, mobile }))
+          setPatientInfoStep('complete')
+          
+          // Complete patient info and proceed
+          const fullPatientInfo = {
+            ...collectedPatientInfo,
+            mobile
+          }
+          
+          setPatient(fullPatientInfo)
+          setShowChatInput(false) // Hide chat input
+          
+          addBotMessage(`Perfect! I have all your information:
+• Name: ${fullPatientInfo.firstName} ${fullPatientInfo.lastName}  
+• Email: ${fullPatientInfo.email}
+• Mobile: ${fullPatientInfo.mobile}
+
+Processing your appointment booking...`, undefined, 1200)
+          
+          setTimeout(() => {
+            setShowConfirmation(true)
+          }, 2500)
+        } else {
+          addBotMessage("Please enter a valid 10-digit mobile number.", undefined, 800)
+        }
+        break
+    }
+  }
+
   const processUserMessage = (message: string) => {
-    const lowerMessage = message.toLowerCase()
+    const messageText = message.trim()
+    
+    // Handle patient info collection steps
+    if (patientInfoStep !== 'complete') {
+      handlePatientInfoStep(messageText)
+      return
+    }
+    
+    const lowerMessage = messageText.toLowerCase()
     
     // Check for dentist request
     if (lowerMessage.includes('dentist') || lowerMessage.includes('dental')) {
@@ -257,11 +340,15 @@ export const AIChat: React.FC = () => {
                 setDate(new Date(Date.now() + 24 * 60 * 60 * 1000)) // Tomorrow
                 setLocation({ id: 1, name: 'KIMS Main Campus' })
                 
-                // Show patient form with natural delay
+                // Start patient info collection
                 setTimeout(() => {
-                  addBotMessage("Perfect! Now I just need your contact information to complete the booking:", undefined, 1000)
+                  addBotMessage("Perfect! Now I need your contact information to complete the booking. Let's start with your first name:", undefined, 1000)
                   setTimeout(() => {
-                    setShowPatientModal(true)
+                    setPatientInfoStep('firstName')
+                    setShowChatInput(true)
+                    setTimeout(() => {
+                      chatInputRef.current?.focus()
+                    }, 100)
                   }, 1800)
                 }, 800)
               }}
@@ -346,13 +433,26 @@ export const AIChat: React.FC = () => {
     
     addBotMessage(`Wonderful! You've selected an appointment with ${doctor.name} on ${dateStr} at ${timeSlot}.`, undefined, 1500)
     setTimeout(() => {
-      addBotMessage("Now I need some basic information to complete your booking:", undefined, 1100)
-      setTimeout(() => {
-        setShowPatientModal(true)
-      }, 2000)
+      // Check if patient info is already collected
+      if (patientInfoStep === 'complete' && collectedPatientInfo.firstName) {
+        addBotMessage("Using your previously provided information. Processing your booking...", undefined, 1100)
+        setTimeout(() => {
+          setShowConfirmation(true)
+        }, 2200)
+      } else {
+        addBotMessage("Now I need some basic information to complete your booking. Let's start with your first name:", undefined, 1100)
+        setTimeout(() => {
+          setPatientInfoStep('firstName')
+          setShowChatInput(true)
+          setTimeout(() => {
+            chatInputRef.current?.focus()
+          }, 100)
+        }, 2000)
+      }
     }, 2800)
   }
 
+  // Legacy handler kept for modal-based booking (if needed)
   const handlePatientInfoSubmitted = (patientData: any) => {
     setPatient(patientData)
     setShowPatientModal(false)
@@ -373,7 +473,7 @@ export const AIChat: React.FC = () => {
     setShowConfirmation(false)
     addBotMessage("🎉 Your appointment has been successfully booked!", undefined, 1300)
     setTimeout(() => {
-      addBotMessage("You'll be redirected to WhatsApp for any further assistance. Thank you for choosing KIMS Hospital!", undefined, 1600)
+      addBotMessage("Your appointment is confirmed! Thank you for choosing KIMS Hospital. Our team will contact you shortly.", undefined, 1600)
         setTimeout(() => {
           addBotMessage("Is there anything else I can help you with today?", 
           <button
@@ -384,6 +484,9 @@ export const AIChat: React.FC = () => {
               // Clear only booking data, keep messages with user selection
               resetBooking()
               setIsInitialized(false)
+              setPatientInfoStep('firstName')
+              setCollectedPatientInfo({ firstName: '', lastName: '', email: '', mobile: '' })
+              setShowChatInput(false)
               // Restart the chat flow
               setTimeout(() => {
                 addBotMessage("Hello! 👋 Welcome to KIMS Hospital. I'm here to help you book your appointment quickly and easily.", undefined, 1000)
@@ -505,61 +608,74 @@ export const AIChat: React.FC = () => {
         initialData={bookingData.patient || {}}
       />
 
-      {/* Chat Input or Footer */}
-      {showChatInput ? (
-        <div className="bg-white border-t border-gray-200 p-4">
-          <div className="flex items-end gap-3">
-            <div className="flex-1">
-              <textarea
-                ref={chatInputRef}
-                value={userInput}
-                onChange={(e) => setUserInput(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Type your message here..."
-                className="w-full p-3 border border-gray-300 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                rows={1}
-                style={{ 
-                  minHeight: '44px',
-                  maxHeight: '120px',
-                  scrollbarWidth: 'thin'
-                }}
-                onInput={(e) => {
-                  const target = e.target as HTMLTextAreaElement
-                  target.style.height = 'auto'
-                  target.style.height = Math.min(target.scrollHeight, 120) + 'px'
-                }}
-              />
-            </div>
-            <button
-              onClick={handleUserMessage}
-              disabled={!userInput.trim()}
-              className={`px-4 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center min-w-[60px] ${
-                userInput.trim()
-                  ? 'bg-primary hover:bg-primary/90 text-white shadow-sm'
-                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-              }`}
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+      {/* Fixed Bottom Chat Input */}
+      {showChatInput && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-10">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-end gap-3">
+              <div className="flex-1">
+                <textarea
+                  ref={chatInputRef}
+                  value={userInput}
+                  onChange={(e) => setUserInput(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder={
+                    patientInfoStep === 'firstName' ? "Enter your first name..." :
+                    patientInfoStep === 'lastName' ? "Enter your last name..." :
+                    patientInfoStep === 'email' ? "Enter your email address..." :
+                    patientInfoStep === 'mobile' ? "Enter your mobile number..." :
+                    "Type your message here..."
+                  }
+                  className="w-full p-3 border border-gray-300 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  rows={1}
+                  style={{ 
+                    minHeight: '44px',
+                    maxHeight: '120px',
+                    scrollbarWidth: 'thin'
+                  }}
+                  onInput={(e) => {
+                    const target = e.target as HTMLTextAreaElement
+                    target.style.height = 'auto'
+                    target.style.height = Math.min(target.scrollHeight, 120) + 'px'
+                  }}
                 />
-              </svg>
-            </button>
-          </div>
-          <div className="text-center mt-2">
-            <p className="text-xs text-gray-400">
-              Press Enter to send • Shift+Enter for new line
-            </p>
+              </div>
+              <button
+                onClick={handleUserMessage}
+                disabled={!userInput.trim()}
+                className={`px-4 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center min-w-[60px] ${
+                  userInput.trim()
+                    ? 'bg-primary hover:bg-primary/90 text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                }`}
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="text-center mt-2">
+              <p className="text-xs text-gray-400">
+                Press Enter to send • Shift+Enter for new line
+              </p>
+            </div>
           </div>
         </div>
+      )}
+
+      {/* Footer Spacer for Chat Input */}
+      {showChatInput ? (
+        <div className="h-32"></div>
       ) : (
         <div className="bg-white border-t px-4 py-3">
           <div className="text-center">
