@@ -387,8 +387,12 @@ export const AIChat: React.FC = () => {
 
   // Patient form handlers
   const handleFirstNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
+    let value = e.target.value
     if (/^[a-zA-Z\s]*$/.test(value)) {
+      // Auto-capitalize first letter after 2 characters
+      if (value.length >= 2 && value.length > 0) {
+        value = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase()
+      }
       setCollectedPatientInfo(prev => ({ ...prev, firstName: value }))
       validateFirstName(value)
       if (!touched.firstName) {
@@ -398,8 +402,12 @@ export const AIChat: React.FC = () => {
   }
 
   const handleLastNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
+    let value = e.target.value
     if (/^[a-zA-Z\s]*$/.test(value)) {
+      // Auto-capitalize first letter after 2 characters
+      if (value.length >= 2 && value.length > 0) {
+        value = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase()
+      }
       setCollectedPatientInfo(prev => ({ ...prev, lastName: value }))
       validateLastName(value)
       if (!touched.lastName) {
@@ -409,7 +417,8 @@ export const AIChat: React.FC = () => {
   }
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
+    // Convert email to lowercase automatically
+    const value = e.target.value.toLowerCase()
     setCollectedPatientInfo(prev => ({ ...prev, email: value }))
     
     validateEmail(value)
@@ -829,19 +838,7 @@ Now, how would you like to proceed?`,
               KIMS Assistant
               <img src="https://static.whatsapp.net/rsrc.php/v4/yM/r/SGDtYg_EYce.png" alt="WhatsApp" className="w-5 h-5" />
             </h1>
-            <a 
-              href="https://botpe.in" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 transition-colors"
-            >
-              <span>Powered By</span>
-              <img 
-                src="https://botpe.in/wp-content/uploads/2023/01/BotPe-Logo-2024.png" 
-                alt="BotPe" 
-                className="h-5 object-contain"
-              />
-            </a>
+            <p className="text-sm text-gray-500">AI-Powered Appointment Booking</p>
           </div>
         </div>
       </div>
@@ -1278,9 +1275,19 @@ Now, how would you like to proceed?`,
       ) : (
         <div className="bg-white border-t px-4 py-3">
           <div className="text-center">
-            <p className="text-xs text-gray-500">
-              KIMS Hospital AI Assistant - Book your appointments with ease
-            </p>
+            <a 
+              href="https://botpe.in" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              <span>Powered By</span>
+              <img 
+                src="https://botpe.in/wp-content/uploads/2023/01/BotPe-Logo-2024.png" 
+                alt="BotPe" 
+                className="h-4 object-contain"
+              />
+            </a>
           </div>
         </div>
       )}
