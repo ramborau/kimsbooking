@@ -48,15 +48,55 @@ const TypingBubble: React.FC<TypingBubbleProps> = ({ isVisible }) => {
       <div className="w-10 h-10 rounded-full bg-white border border-primary flex items-center justify-center flex-shrink-0">
         <img src="/kimsbot.png" alt="KIMS Bot" className="w-8 h-8 rounded-full object-cover" />
       </div>
-      <div className="bg-white rounded-2xl rounded-bl-md px-4 py-3 shadow-sm border animate-pulse">
-        <div className="flex gap-1">
-          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+      <div className="bg-white rounded-2xl rounded-bl-md px-4 py-3 shadow-sm border">
+        <div className="flex gap-1 items-center">
+          <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+          <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '200ms' }}></div>
+          <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '400ms' }}></div>
+          <span className="text-xs text-gray-500 ml-2 opacity-75">KIMS Bot is typing...</span>
         </div>
       </div>
     </div>
   )
+}
+
+// Component to render formatted text with bold, italics, and emojis
+const FormattedText: React.FC<{ content: string }> = ({ content }) => {
+  // Parse text for **bold**, *italic*, and preserve emojis
+  const parseText = (text: string) => {
+    const parts: (string | JSX.Element)[] = []
+    let currentIndex = 0
+    let keyCounter = 0
+
+    // First handle bold text **text**
+    text = text.replace(/\*\*(.*?)\*\*/g, (match, boldText) => {
+      return `<BOLD>${boldText}</BOLD>`
+    })
+
+    // Then handle italic text *text*
+    text = text.replace(/\*(.*?)\*/g, (match, italicText) => {
+      return `<ITALIC>${italicText}</ITALIC>`
+    })
+
+    // Split by our custom tags
+    const segments = text.split(/(<BOLD>.*?<\/BOLD>|<ITALIC>.*?<\/ITALIC>)/)
+    
+    segments.forEach((segment) => {
+      if (segment.startsWith('<BOLD>') && segment.endsWith('</BOLD>')) {
+        const boldText = segment.slice(6, -7) // Remove <BOLD> and </BOLD>
+        parts.push(<strong key={keyCounter++} className="font-bold">{boldText}</strong>)
+      } else if (segment.startsWith('<ITALIC>') && segment.endsWith('</ITALIC>')) {
+        const italicText = segment.slice(8, -9) // Remove <ITALIC> and </ITALIC>
+        parts.push(<em key={keyCounter++} className="italic">{italicText}</em>)
+      } else if (segment) {
+        parts.push(segment)
+      }
+    })
+
+    return parts
+  }
+
+  return <>{parseText(content)}</>
 }
 
 export const AIChat: React.FC = () => {
@@ -229,9 +269,9 @@ export const AIChat: React.FC = () => {
     
     // Restart the chat flow
     setTimeout(() => {
-      addBotMessage("Hello! Welcome to KIMS Hospital. I'm here to help you book your appointment quickly and easily.", undefined, 1000)
+      addBotMessage("👋 **Hello!** Welcome to *KIMS Hospital*. I'm here to help you book your appointment **quickly and easily**! 🏥", undefined, 1000)
       setTimeout(() => {
-        addBotMessage("First, let me get your basic information to serve you better. Please provide your name:", undefined, 1800)
+        addBotMessage("📝 First, let me get your **basic information** to serve you better. Please provide your *name*:", undefined, 1800)
         
         setTimeout(() => {
           setPatientInfoStep('name')
@@ -623,10 +663,10 @@ export const AIChat: React.FC = () => {
       // Only start normal flow if no cached info
       if (!hasCachedInfo) {
         timeoutId1 = setTimeout(() => {
-          addBotMessage("Hello! Welcome to KIMS Hospital. I'm here to help you book your appointment quickly and easily.", undefined, 1000)
+          addBotMessage("👋 **Hello!** Welcome to *KIMS Hospital*. I'm here to help you book your appointment **quickly and easily**! 🏥", undefined, 1000)
           
           timeoutId2 = setTimeout(() => {
-            addBotMessage("First, let me get your basic information to serve you better. Please provide your name:", undefined, 1800)
+            addBotMessage("📝 First, let me get your **basic information** to serve you better. Please provide your *name*:", undefined, 1800)
             
             setTimeout(() => {
               setPatientInfoStep('name')
@@ -661,7 +701,7 @@ export const AIChat: React.FC = () => {
     // Add user message for button selection
     addUserMessage("Book An Appointment")
     
-    addBotMessage("Great! First, please select the medical department you need:", undefined, 1200)
+    addBotMessage("🏥 **Great!** First, please select the **medical department** you need: 👨‍⚕️", undefined, 1200)
     setTimeout(() => {
       setShowDepartmentModal(true)
     }, 2500)
@@ -673,7 +713,7 @@ export const AIChat: React.FC = () => {
     // Add user message for button selection
     addUserMessage("💬 Chat with Bot")
     
-    addBotMessage("I'm here to help! Please tell me what you need assistance with. For example, you can say 'I need to see a dentist at the earliest' or 'I want to book a cardiology appointment'.", undefined, 1800)
+    addBotMessage("💬 **I'm here to help!** Please tell me what you need assistance with. For example, you can say *'I need to see a dentist at the earliest'* or *'I want to book a cardiology appointment'*. 🩺", undefined, 1800)
     
     // Show chat input at bottom after delay
     setTimeout(() => {
@@ -718,7 +758,7 @@ export const AIChat: React.FC = () => {
             collectedPatientInfo.firstName.trim() && collectedPatientInfo.lastName.trim()) {
           addUserMessage(`${collectedPatientInfo.firstName} ${collectedPatientInfo.lastName}`)
           setShowChatInput(false)
-          addBotMessage(`Nice to meet you, ${collectedPatientInfo.firstName} ${collectedPatientInfo.lastName}! ${collectedPatientInfo.firstName}, please provide your email address:`, undefined, 800)
+          addBotMessage(`😊 **Nice to meet you**, *${collectedPatientInfo.firstName} ${collectedPatientInfo.lastName}*! ${collectedPatientInfo.firstName}, please provide your **email address**: 📧`, undefined, 800)
           setTimeout(() => {
             setPatientInfoStep('email')
             setShowChatInput(true)
@@ -733,7 +773,7 @@ export const AIChat: React.FC = () => {
         if (validation.email && collectedPatientInfo.email.trim()) {
           addUserMessage(collectedPatientInfo.email)
           setShowChatInput(false)
-          addBotMessage(`Great! Finally, ${collectedPatientInfo.firstName}, please provide your mobile number:`, undefined, 800)
+          addBotMessage(`✅ **Great!** Finally, *${collectedPatientInfo.firstName}*, please provide your **mobile number**: 📱`, undefined, 800)
           setTimeout(() => {
             setPatientInfoStep('mobile')
             setShowChatInput(true)
@@ -758,12 +798,12 @@ export const AIChat: React.FC = () => {
           
           setPatient(fullPatientInfo)
           
-          addBotMessage(`Perfect! I have all your information:
-• Name: ${fullPatientInfo.firstName} ${fullPatientInfo.lastName}  
-• Email: ${fullPatientInfo.email}
-• Mobile: ${fullPatientInfo.selectedCountryCode} ${fullPatientInfo.mobile}
+          addBotMessage(`🎉 **Perfect!** I have all your information:
+• **Name**: *${fullPatientInfo.firstName} ${fullPatientInfo.lastName}*  
+• **Email**: ${fullPatientInfo.email} 📧
+• **Mobile**: ${fullPatientInfo.selectedCountryCode} ${fullPatientInfo.mobile} 📱
 
-Now, how would you like to proceed?`, 
+Now, **how would you like to proceed?** 🚀`, 
             <div className="space-y-3">
               <button
                 onClick={handleStartBooking}
@@ -791,7 +831,7 @@ Now, how would you like to proceed?`,
     
     // Check for dentist request
     if (lowerMessage.includes('dentist') || lowerMessage.includes('dental')) {
-      addBotMessage("Let me check our dentist availability for you...", undefined, 1000)
+      addBotMessage("🔍 **Let me check** our *dentist availability* for you... 🦷", undefined, 1000)
       
       // Auto-select dentistry department
       const dentistryDept = { id: 1, name: 'Dentistry', description: 'Dental care and oral health' }
@@ -799,7 +839,7 @@ Now, how would you like to proceed?`,
       
       // Show earliest available appointment with natural delay
       setTimeout(() => {
-        addBotMessage("Perfect! I found Dr. Sarah Johnson, our experienced dentist, available tomorrow at 10:00 AM. Would you like to book this appointment?",
+        addBotMessage("🎯 **Perfect!** I found *Dr. Sarah Johnson*, our **experienced dentist**, available **tomorrow at 10:00 AM**. Would you like to book this appointment? ⏰",
           <div className="p-4 space-y-3">
             <div className="bg-gray-50 p-3 rounded-lg">
               <p><strong>Doctor:</strong> Dr. Sarah Johnson</p>
@@ -869,9 +909,9 @@ Now, how would you like to proceed?`,
     // Add user message showing their selection
     addUserMessage(`I selected ${department.name}`)
     
-    addBotMessage(`Excellent choice! ${department.name} is one of our specialized departments with experienced doctors.`, undefined, 1400)
+    addBotMessage(`✨ **Excellent choice!** *${department.name}* is one of our **specialized departments** with experienced doctors. 👨‍⚕️`, undefined, 1400)
     setTimeout(() => {
-      addBotMessage("Now, let's find the most convenient location for you:", undefined, 1000)
+      addBotMessage("📍 Now, let's find the **most convenient location** for you: 🏥", undefined, 1000)
       setTimeout(() => {
         setShowLocationModal(true)
       }, 1800)
@@ -940,7 +980,7 @@ Now, how would you like to proceed?`,
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col" style={{backgroundImage: 'url(https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png)', backgroundRepeat: 'repeat', backgroundSize: 'auto'}}>
       {/* Header */}
-      <div className="bg-white shadow-sm border-b px-4 py-4">
+      <div className="bg-white shadow-sm border-b px-4 py-4 sticky top-0 z-40">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-white border border-primary flex items-center justify-center">
@@ -951,7 +991,7 @@ Now, how would you like to proceed?`,
                 KIMS Assistant
                 <img src="https://static.whatsapp.net/rsrc.php/v4/yM/r/SGDtYg_EYce.png" alt="WhatsApp" className="w-5 h-5" />
               </h1>
-              <p className="text-sm text-gray-500">AI-Powered Appointment Booking</p>
+              <p className="text-sm text-gray-500">AI Powered Assistance</p>
             </div>
           </div>
           
@@ -1004,7 +1044,9 @@ Now, how would you like to proceed?`,
                 </div>
                 <div className="max-w-[80%] min-w-0">
                   <div className="bg-white rounded-2xl rounded-bl-md px-4 py-3 shadow-sm border">
-                    <p className="text-gray-800 leading-relaxed">{message.content}</p>
+                    <p className="text-gray-800 leading-relaxed">
+                      <FormattedText content={message.content} />
+                    </p>
                   </div>
                   {message.component && (
                     <div className="mt-3 rounded-2xl overflow-hidden" style={{backgroundColor: 'transparent', boxShadow: 'none', border: 'none'}}>
@@ -1024,7 +1066,7 @@ Now, how would you like to proceed?`,
               </div>
             ) : (
               <div className="flex items-start gap-3 mb-4 flex-row-reverse">
-                <div className="w-10 h-10 flex-shrink-0 rounded-full overflow-hidden p-1 bg-gray-100">
+                <div className="w-10 h-10 flex-shrink-0 rounded-full overflow-hidden bg-primary">
                   <img src="/user.png" alt="User" className="w-full h-full rounded-full object-cover" />
                 </div>
                 <div className="max-w-[80%]">
@@ -1532,9 +1574,9 @@ Now, how would you like to proceed?`,
                   setCachedUserInfo(null)
                   // Start normal flow
                   setTimeout(() => {
-                    addBotMessage("Hello! Welcome to KIMS Hospital. I'm here to help you book your appointment quickly and easily.", undefined, 1000)
+                    addBotMessage("👋 **Hello!** Welcome to *KIMS Hospital*. I'm here to help you book your appointment **quickly and easily**! 🏥", undefined, 1000)
                     setTimeout(() => {
-                      addBotMessage("First, let me get your basic information to serve you better. Please provide your name:", undefined, 1800)
+                      addBotMessage("📝 First, let me get your **basic information** to serve you better. Please provide your *name*:", undefined, 1800)
                       setTimeout(() => {
                         setPatientInfoStep('name')
                         setShowChatInput(true)
@@ -1674,9 +1716,9 @@ Now, how would you like to proceed?`,
                   setCachedUserInfo(null)
                   // Start normal flow
                   setTimeout(() => {
-                    addBotMessage("Hello! Welcome to KIMS Hospital. I'm here to help you book your appointment quickly and easily.", undefined, 1000)
+                    addBotMessage("👋 **Hello!** Welcome to *KIMS Hospital*. I'm here to help you book your appointment **quickly and easily**! 🏥", undefined, 1000)
                     setTimeout(() => {
-                      addBotMessage("First, let me get your basic information to serve you better. Please provide your name:", undefined, 1800)
+                      addBotMessage("📝 First, let me get your **basic information** to serve you better. Please provide your *name*:", undefined, 1800)
                       setTimeout(() => {
                         setPatientInfoStep('name')
                         setShowChatInput(true)
@@ -1704,10 +1746,10 @@ Now, how would you like to proceed?`,
                   setShowCachePopup(false)
                   
                   // Add welcome message and go straight to booking flow
-                  addBotMessage(`Welcome back, ${cachedUserInfo.firstName}! I have your information ready.`, undefined, 800)
+                  addBotMessage(`🎉 **Welcome back**, *${cachedUserInfo.firstName}*! I have your **information ready**. ✅`, undefined, 800)
                   
                   setTimeout(() => {
-                    addBotMessage("How would you like to proceed today?", 
+                    addBotMessage("**How would you like to proceed today?** 🚀", 
                       <div className="space-y-3">
                         <button
                           onClick={handleStartBooking}
