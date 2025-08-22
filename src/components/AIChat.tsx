@@ -169,7 +169,6 @@ export const AIChat: React.FC = () => {
   const [isCalling, setIsCalling] = useState(false)
   const [showToast, setShowToast] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
-  const [userHasReplied, setUserHasReplied] = useState(false)
   const [showCachePopup, setShowCachePopup] = useState(false)
   const [cachedUserInfo, setCachedUserInfo] = useState<any>(null)
   const [typingMessageId, setTypingMessageId] = useState<string | null>(null)
@@ -245,7 +244,6 @@ export const AIChat: React.FC = () => {
     }
     
     setMessages(prev => [...prev, newMessage])
-    setUserHasReplied(true)
     saveUserInfoToCache()
   }
 
@@ -290,7 +288,6 @@ export const AIChat: React.FC = () => {
     setPatientInfoStep('name')
     setCollectedPatientInfo({ firstName: '', lastName: '', email: '', mobile: '' })
     setShowChatInput(false)
-    setUserHasReplied(false)
     resetBooking()
     setShowMenu(false)
     
