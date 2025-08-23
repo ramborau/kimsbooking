@@ -186,7 +186,14 @@ export const AIChat: React.FC = () => {
   const [typingMessageId, setTypingMessageId] = useState<string | null>(null)
   const [showSlashCommands, setShowSlashCommands] = useState(false)
   const [completedTypingMessages, setCompletedTypingMessages] = useState<Set<string>>(new Set())
-  const [messageQueue, setMessageQueue] = useState<Array<{content: string, component?: React.ReactNode, delay: number, callback?: () => void}>>([])
+  const [messageQueue, setMessageQueue] = useState<Array<{
+    id: string,
+    content: string, 
+    component?: React.ReactNode, 
+    delay: number, 
+    callback?: () => void,
+    isQuestion?: boolean // Mark if this message expects user input
+  }>>([])
   const [isProcessingQueue, setIsProcessingQueue] = useState(false)
   const [currentMessageCallback, setCurrentMessageCallback] = useState<(() => void) | null>(null)
 
@@ -232,11 +239,24 @@ export const AIChat: React.FC = () => {
   }
 
   // Add a bot message to the queue
-  const addBotMessage = (content: string, component?: React.ReactNode, delay: number = 1500, callback?: () => void) => {
-    setMessageQueue(prev => [...prev, { content, component, delay, callback }])
+  const addBotMessage = (content: string, component?: React.ReactNode, delay: number = 1500, callback?: () => void, isQuestion: boolean = false) => {
+    const messageId = Date.now().toString() + Math.random()
+    setMessageQueue(prev => [...prev, { 
+      id: messageId,
+      content, 
+      component, 
+      delay, 
+      callback,
+      isQuestion 
+    }])
+    
+    // Track questions for future enhancements if needed
+    if (isQuestion) {
+      // Could be used for question tracking in future
+    }
   }
 
-  // Process the message queue one at a time
+  // Process the message queue one at a time with 2-second delays
   const processNextMessage = () => {
     if (messageQueue.length === 0 || isProcessingQueue) return
     
@@ -249,7 +269,7 @@ export const AIChat: React.FC = () => {
     
     setTimeout(() => {
       const newMessage: Message = {
-        id: Date.now().toString(),
+        id: nextMessage.id,
         type: nextMessage.component ? 'screen' : 'bot',
         content: nextMessage.content,
         timestamp: new Date(),
@@ -260,7 +280,7 @@ export const AIChat: React.FC = () => {
       setIsTyping(false)
       setTypingMessageId(newMessage.id)
       playNotificationSound()
-    }, nextMessage.delay)
+    }, 500) // Reduced delay for message appearance
   }
 
   // Process queue when new messages are added or when current message finishes
@@ -274,7 +294,6 @@ export const AIChat: React.FC = () => {
   const handleTypingComplete = (messageId: string) => {
     setTypingMessageId(null)
     setCompletedTypingMessages(prev => new Set([...prev, messageId]))
-    setIsProcessingQueue(false)
     
     // Execute callback after this message finishes with 3 second delay
     if (currentMessageCallback) {
@@ -282,12 +301,13 @@ export const AIChat: React.FC = () => {
       setCurrentMessageCallback(null)
     }
     
-    // Process next message in queue after a short delay
+    // Process next message in queue after 2-second delay
     setTimeout(() => {
+      setIsProcessingQueue(false)
       if (messageQueue.length > 0) {
         processNextMessage()
       }
-    }, 300)
+    }, 2000) // 2-second delay between messages
   }
 
   // Add a user message immediately (no typing animation)
@@ -478,6 +498,11 @@ export const AIChat: React.FC = () => {
   const generateAppointmentConfirmation = () => {
     const bookingRef = Math.random().toString(36).substr(2, 9).toUpperCase()
     
+    // Send webhook in background
+    setTimeout(() => {
+      sendWebhookInBackground(bookingRef)
+    }, 500)
+    
     return (
       <div className="space-y-4">
         {/* Success Header */}
@@ -612,11 +637,8 @@ export const AIChat: React.FC = () => {
     )
   }
 
-  // Send webhook and show confirmation message
-  const sendWebhookAndShowConfirmation = async () => {
-    const bookingRef = Math.random().toString(36).substr(2, 9).toUpperCase()
-    
-    // Send webhook data
+  // Send webhook in background
+  const sendWebhookInBackground = async (bookingRef: string) => {
     try {
       const countryCode = bookingData.patient?.selectedCountryCode?.replace('+', '') || '91'
       const mobileNumber = bookingData.patient?.mobile || ''
@@ -652,8 +674,12 @@ export const AIChat: React.FC = () => {
     } catch (error) {
       console.error('Webhook error:', error)
     }
-    
-    // Show confirmation message
+  }
+
+  // Send webhook and show confirmation message (legacy function)
+  const sendWebhookAndShowConfirmation = async () => {
+    const bookingRef = Math.random().toString(36).substr(2, 9).toUpperCase()
+    await sendWebhookInBackground(bookingRef)
     addBotMessage("", generateAppointmentConfirmation(), 800)
   }
 
@@ -858,9 +884,9 @@ export const AIChat: React.FC = () => {
     // Add user message for button selection
     addUserMessage("Book An Appointment")
     
-    addBotMessage("🏥 **Great!** First, please select the **medical department** you need: 👨‍⚕️", undefined, 1200, () => {
+    addBotMessage("🏥 **Great!** First, please select the **medical department** you need: 👨‍⚕️", undefined, 1000, () => {
       setShowDepartmentModal(true)
-    })
+    }, true) // Mark as question that expects user input
   }
 
   const handleChatMode = () => {
@@ -1075,10 +1101,11 @@ Now, **how would you like to proceed?** 🚀`,
     // Add user message showing their selection
     addUserMessage(`I selected ${department.name}`)
     
-    addBotMessage(`✨ **Excellent choice!** *${department.name}* is one of our **specialized departments** with experienced doctors. 👨‍⚕️`, undefined, 1400)
+    // Add messages to queue with proper delays
+    addBotMessage(`✨ **Excellent choice!** *${department.name}* is one of our **specialized departments** with experienced doctors. 👨‍⚕️`, undefined, 1000)
     addBotMessage("📍 Now, let's find the **most convenient location** for you: 🏥", undefined, 1000, () => {
       setShowLocationModal(true)
-    })
+    }, true) // Mark as question that expects user input
   }
 
   const handleLocationSelected = (location: {id: number, name: string}) => {
@@ -1088,10 +1115,11 @@ Now, **how would you like to proceed?** 🚀`,
     // Add user message showing their selection
     addUserMessage(`I chose ${location.name}`)
     
-    addBotMessage(`Perfect! ${location.name} is a great choice.`, undefined, 1100)
-    addBotMessage("Now, please select your preferred date and time for the appointment:", undefined, 1200, () => {
+    // Add messages to queue with proper delays
+    addBotMessage(`**Perfect!** *${location.name}* is a great choice.`, undefined, 1000)
+    addBotMessage("**Now, please select your preferred date and time** for the appointment:", undefined, 1000, () => {
       setShowDateModal(true)
-    })
+    }, true) // Mark as question that expects user input
   }
 
   const handleDateTimeSelected = (doctor: {id: number, name: string}, timeSlot: string, date: Date | null) => {
@@ -1107,15 +1135,10 @@ Now, **how would you like to proceed?** 🚀`,
     // Add user message showing their selection
     addUserMessage(`I booked with ${doctor.name} on ${dateStr} at ${timeSlot}`)
     
-    addBotMessage(`Wonderful! You've selected an appointment with ${doctor.name} on ${dateStr} at ${timeSlot}.`, undefined, 1500)
-    setTimeout(() => {
-      // Patient info already collected at start, proceed to confirmation
-      addBotMessage("Using your previously provided information. Processing your booking...", undefined, 1100)
-      setTimeout(() => {
-        // Send confirmation message with webhook
-        sendWebhookAndShowConfirmation()
-      }, 2200)
-    }, 2800)
+    // Add messages to queue with proper delays
+    addBotMessage(`**Wonderful!** You've selected an appointment with *${doctor.name}* on **${dateStr}** at *${timeSlot}*.`, undefined, 1000)
+    addBotMessage("**Using your previously provided information. Processing your booking...**", undefined, 1000)
+    addBotMessage("", generateAppointmentConfirmation(), 1200) // Confirmation with webhook
   }
 
   // Legacy handler kept for modal-based booking (if needed)
