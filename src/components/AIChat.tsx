@@ -262,8 +262,13 @@ export const AIChat: React.FC = () => {
     
     setIsProcessingQueue(true)
     const nextMessage = messageQueue[0]
-    setMessageQueue(prev => prev.slice(1))
-    setCurrentMessageCallback(nextMessage.callback || null)
+    const remainingQueue = messageQueue.slice(1)
+    setMessageQueue(remainingQueue)
+    
+    // Only set callback if this is truly the last message before user input
+    // Check if next message in queue has a callback (which means it's a new group)
+    const isLastInGroup = remainingQueue.length === 0 || remainingQueue[0].callback !== undefined
+    setCurrentMessageCallback(isLastInGroup && nextMessage.callback ? nextMessage.callback : null)
     
     setIsTyping(true)
     
@@ -295,9 +300,9 @@ export const AIChat: React.FC = () => {
     setTypingMessageId(null)
     setCompletedTypingMessages(prev => new Set([...prev, messageId]))
     
-    // Execute callback after this message finishes with 3 second delay
+    // Execute callback if set (only set for last message in group)
     if (currentMessageCallback) {
-      setTimeout(currentMessageCallback, 3000) // 3 second delay before opening popup
+      setTimeout(currentMessageCallback, 1500) // 1.5 second delay after typing completes
       setCurrentMessageCallback(null)
     }
     
@@ -1101,7 +1106,7 @@ Now, **how would you like to proceed?** 🚀`,
     // Add user message showing their selection
     addUserMessage(`I selected ${department.name}`)
     
-    // Add messages to queue with proper delays
+    // Add messages to queue - callback only on the LAST message
     addBotMessage(`✨ **Excellent choice!** *${department.name}* is one of our **specialized departments** with experienced doctors. 👨‍⚕️`, undefined, 1000)
     addBotMessage("📍 Now, let's find the **most convenient location** for you: 🏥", undefined, 1000, () => {
       setShowLocationModal(true)
@@ -1115,7 +1120,7 @@ Now, **how would you like to proceed?** 🚀`,
     // Add user message showing their selection
     addUserMessage(`I chose ${location.name}`)
     
-    // Add messages to queue with proper delays
+    // Add messages to queue - callback only on the LAST message
     addBotMessage(`**Perfect!** *${location.name}* is a great choice.`, undefined, 1000)
     addBotMessage("**Now, please select your preferred date and time** for the appointment:", undefined, 1000, () => {
       setShowDateModal(true)
